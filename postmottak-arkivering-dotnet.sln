@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "postmottak-arkivering-dotnet", "postmottak-arkivering-dotnet\postmottak-arkivering-dotnet.csproj", "{7730F1F1-B9C5-484E-AFCC-08D31A387DB2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "postmottak-arkivering-dotnet-tests", "postmottak-arkivering-dotnet-tests\postmottak-arkivering-dotnet-tests.csproj", "{6095C03E-6F56-4606-A5BB-8621AFC0F86C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{7730F1F1-B9C5-484E-AFCC-08D31A387DB2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7730F1F1-B9C5-484E-AFCC-08D31A387DB2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7730F1F1-B9C5-484E-AFCC-08D31A387DB2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6095C03E-6F56-4606-A5BB-8621AFC0F86C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6095C03E-6F56-4606-A5BB-8621AFC0F86C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6095C03E-6F56-4606-A5BB-8621AFC0F86C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6095C03E-6F56-4606-A5BB-8621AFC0F86C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
