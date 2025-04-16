@@ -96,7 +96,7 @@ public class GraphService : IGraphService
         }
         catch (ODataError ex)
         {
-            _logger.LogError(ex, "Failed to move MessageId {MessageId} to FolderId {DestinationFolderId} for {UserPrincipalName}", messageId, destinationFolderId, userPrincipalName);
+            _logger.LogError(ex, "MessageId {MessageId} failed to be moved to FolderId {DestinationFolderId} for {UserPrincipalName}", messageId, destinationFolderId, userPrincipalName);
             return false;
         }
     }

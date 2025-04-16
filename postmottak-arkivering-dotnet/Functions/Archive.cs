@@ -55,7 +55,7 @@ public class Archive
         var mailMessages = await _graphService.GetMailMessages(_postboxUpn, _mailFolderInboxId, ["attachments"]);
         if (mailMessages.Count == 0)
         {
-            _logger.LogInformation("No messages found in FolderId {FolderId}", _mailFolderInboxId);
+            _logger.LogInformation("No messages found in Inbox folder");
             return new OkResult();
         }
         
@@ -72,30 +72,28 @@ public class Archive
 
         foreach (var message in messages)
         {
-            if (string.IsNullOrEmpty(message.Subject) || string.IsNullOrEmpty(message.Id))
+            if (string.IsNullOrEmpty(message.Subject))
             {
-                _logger.LogWarning("MessageId {MessageId} is missing required properties and will not be handled", message.Id);
+                _logger.LogWarning("MessageId {MessageId} is missing required property Subject and will not be handled. Subject: {Subject}", message.Id, message.Subject);
                 unhandledMessages.Add(message);
                 continue;
             }
             
             if (!IsKnownSubject(message.Subject))
             {
-                // TODO: Remove this log before production
-                _logger.LogWarning("MessageId {MessageId} has unknown subject {Subject}", message.Id, message.Subject);
                 unhandledMessages.Add(message);
                 continue;
             }
             
             // TODO: Archive message and any attachments and log successful archiving
             
-            if (!await _graphService.MoveMailMessage(_postboxUpn, message.Id, _mailFolderFinishedId))
+            if (!await _graphService.MoveMailMessage(_postboxUpn, message.Id!, _mailFolderFinishedId))
             {
                 unhandledMessages.Add(message);
                 continue;
             }
             
-            _logger.LogInformation("Successfully moved MessageId {MessageId} to finished folder", message.Id);
+            _logger.LogInformation("MessageId {MessageId} successfully moved to finished folder", message.Id);
         }
 
         return unhandledMessages;
@@ -105,19 +103,15 @@ public class Archive
     {
         foreach (var message in messages)
         {
-            if (string.IsNullOrEmpty(message.Id))
+            // TODO: Remove this log before production
+            _logger.LogWarning("MessageId {MessageId} has unknown subject '{Subject}' and will be moved to manual handling folder", message.Id, message.Subject);
+            
+            if (!await _graphService.MoveMailMessage(_postboxUpn, message.Id!, _mailFolderManualHandlingId))
             {
-                _logger.LogWarning("MessageId {MessageId} is missing required property and can not be moved to manual handling folder", message.Id);
                 continue;
             }
             
-            if (!await _graphService.MoveMailMessage(_postboxUpn, message.Id, _mailFolderManualHandlingId))
-            {
-                _logger.LogWarning("Failed to move MessageId {MessageId} to manual handling folder", message.Id);
-                continue;
-            }
-            
-            _logger.LogInformation("Successfully moved MessageId {MessageId} to manual handling folder", message.Id);
+            _logger.LogInformation("MessageId {MessageId} successfully moved to manual handling folder", message.Id);
         }
     }
 
