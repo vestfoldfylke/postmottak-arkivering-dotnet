@@ -28,6 +28,11 @@ public class Archive
     private readonly string[] _mailKnownSubjects;
     private readonly string _postboxUpn;
 
+    private readonly EmailAddress _replyFromAddress;
+    private readonly List<EmailAddress> _replyToAddresses;
+    private readonly string _replySubject;
+    private readonly string _replyBody;
+
     public Archive(IConfiguration configuration, ILogger<Archive> logger, IGraphService graphService)
     {
         _logger = logger;
@@ -40,6 +45,20 @@ public class Archive
         _mailFolderFinishedId = configuration["Postmottak_MailFolder_Finished_Id"] ?? throw new NullReferenceException();
         _mailKnownSubjects = knownSubjects.Split(",");
         _postboxUpn = configuration["Postmottak_UPN"] ?? throw new NullReferenceException();
+        
+        _replyFromAddress = new EmailAddress
+        {
+            Address = _postboxUpn,
+            Name = "Arkiveringsrobåten"
+        };
+
+        _replyToAddresses =
+        [
+            _replyFromAddress
+        ];
+
+        _replySubject = "Mottatt og spytta på";
+        _replyBody = "Vi har mottatt din henvendelse og driter i hva du mener.";
     }
 
     [Function("ArchiveEmails")]
@@ -61,7 +80,7 @@ public class Archive
         
         List<Message> unhandledMessages = await HandleKnownSubjects(mailMessages);
 
-        await HandleUnhandledMessages(unhandledMessages);
+        await HandleUnknownMessages(unhandledMessages);
         
         return new OkResult();
     }
@@ -86,6 +105,9 @@ public class Archive
             }
             
             // TODO: Archive message and any attachments and log successful archiving
+
+            await _graphService.ReplyMailMessage(_postboxUpn, message.Id!, _replyFromAddress, _replyToAddresses,
+                _replySubject, _replyBody, _replyBody.Contains('<') && _replyBody.Contains('>'));
             
             if (!await _graphService.MoveMailMessage(_postboxUpn, message.Id!, _mailFolderFinishedId))
             {
@@ -99,11 +121,12 @@ public class Archive
         return unhandledMessages;
     }
 
-    private async Task HandleUnhandledMessages(List<Message> messages)
+    private async Task HandleUnknownMessages(List<Message> messages)
     {
         foreach (var message in messages)
         {
-            // TODO: Remove this log before production
+            // TODO: Use KI to figure out how to archive this message
+
             _logger.LogWarning("MessageId {MessageId} has unknown subject '{Subject}' and will be moved to manual handling folder", message.Id, message.Subject);
             
             if (!await _graphService.MoveMailMessage(_postboxUpn, message.Id!, _mailFolderManualHandlingId))

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 //using Azure.Core.Diagnostics;
 using Azure.Identity;
@@ -9,6 +10,7 @@ using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
 using Microsoft.Graph.Users.Item.MailFolders.Item.Messages;
 using Microsoft.Graph.Users.Item.Messages.Item.Move;
+using Microsoft.Graph.Users.Item.Messages.Item.Reply;
 using Microsoft.Kiota.Abstractions;
 
 namespace postmottak_arkivering_dotnet.Services;
@@ -20,6 +22,9 @@ public interface IGraphService
     Task<List<Attachment>> GetMailMessageAttachments(string userPrincipalName, string messageId);
     Task<List<Message>> GetMailMessages(string userPrincipalName, string folderId, string[]? expandedProperties = null);
     Task<bool> MoveMailMessage(string userPrincipalName, string messageId, string destinationFolderId);
+    Task<bool> ReplyMailMessage(string userPrincipalName, string messageId,
+        EmailAddress fromAddress, List<EmailAddress> toAddresses, string subject, string replyBody,
+        bool isHtml = false);
 }
 
 public class GraphService : IGraphService
@@ -96,7 +101,45 @@ public class GraphService : IGraphService
         }
         catch (ODataError ex)
         {
-            _logger.LogError(ex, "MessageId {MessageId} failed to be moved to FolderId {DestinationFolderId} for {UserPrincipalName}", messageId, destinationFolderId, userPrincipalName);
+            _logger.LogError(ex, "MessageId {MessageId} failed to be moved to FolderId {DestinationFolderId} in {UserPrincipalName}", messageId, destinationFolderId, userPrincipalName);
+            return false;
+        }
+    }
+    
+    public async Task<bool> ReplyMailMessage(string userPrincipalName, string messageId,
+        EmailAddress fromAddress, List<EmailAddress> toAddresses, string subject, string replyBody, bool isHtml = false)
+    {
+        var replyRequestBody = new ReplyPostRequestBody
+        {
+            Message = new Message
+            {
+                From = new Recipient
+                {
+                    EmailAddress = fromAddress
+                },
+                ReplyTo = toAddresses.Select(toAddress => new Recipient{ EmailAddress = toAddress }).ToList(),
+                Subject = subject,
+                IsRead = true,
+                SentDateTime = DateTimeOffset.Now,
+                Body = new ItemBody
+                {
+                    Content = replyBody,
+                    ContentType = isHtml ? BodyType.Html : BodyType.Text
+                }
+            },
+            Comment = "Detta er en kommentar, men hvor dukkær denna opp da \ud83e\udd37\u200d\u2642\ufe0f"
+        };
+        
+        try
+        {
+            await _graphClient.Users[userPrincipalName].Messages[messageId].Reply.PostAsync(replyRequestBody);
+            _logger.LogInformation("MessageId {MessageId} successfully replied to in {UserPrincipalName}. ReplyBody: {@ReplyBody}", messageId, userPrincipalName, replyRequestBody);
+
+            return true;
+        }
+        catch (ODataError ex)
+        {
+            _logger.LogError(ex, "MessageId {MessageId} failed to be replied to in {UserPrincipalName}. ReplyBody: {@ReplyBody}", messageId, userPrincipalName, replyRequestBody);
             return false;
         }
     }
