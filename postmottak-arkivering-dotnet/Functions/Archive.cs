@@ -43,13 +43,13 @@ public class Archive
     }
 
     [Function("ArchiveEmails")]
-    [OpenApiOperation(operationId: "SendMail")]
+    [OpenApiOperation(operationId: "ArchiveEmails")]
     [OpenApiSecurity("Authentication", SecuritySchemeType.ApiKey, Name = "X-Functions-Key", In = OpenApiSecurityLocationType.Header)]
     [OpenApiResponseWithoutBody(HttpStatusCode.OK, Description = "Executed successfully")]
     [OpenApiResponseWithBody(HttpStatusCode.InternalServerError, "application/json", typeof(ErrorResponse), Description = "Error occured")]
     public async Task<IActionResult> ArchiveEmails([HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequest req)
     {
-        _logger.LogInformation("C# HTTP trigger function processed a request.");
+        _logger.LogInformation("ArchiveEmails function started");
         
         // get all messages from _mailFolderInboxId (extended with attachments)
         var mailMessages = await _graphService.GetMailMessages(_postboxUpn, _mailFolderInboxId, ["attachments"]);
