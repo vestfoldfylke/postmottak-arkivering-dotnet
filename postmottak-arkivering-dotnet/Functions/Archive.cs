@@ -84,6 +84,22 @@ public class Archive
         
         return new OkResult();
     }
+    
+    [Function("ListFolders")]
+    [OpenApiOperation(operationId: "ListFolders")]
+    [OpenApiSecurity("Authentication", SecuritySchemeType.ApiKey, Name = "X-Functions-Key", In = OpenApiSecurityLocationType.Header)]
+    [OpenApiResponseWithBody(HttpStatusCode.OK, "application/json", typeof(List<MailFolder>), Description = "List of mail folders")]
+    [OpenApiResponseWithBody(HttpStatusCode.InternalServerError, "application/json", typeof(ErrorResponse), Description = "Error occured")]
+    public async Task<IActionResult> ListFolders([HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequest req)
+    {
+        var parentFolder = req.Query.Keys.Contains("parentFolder") ? req.Query["parentFolder"].ToString() : null;
+        
+        var mailFolders = !string.IsNullOrEmpty(parentFolder)
+            ? await _graphService.GetMailChildFolders(_postboxUpn, parentFolder)
+            : await _graphService.GetMailFolders(_postboxUpn);
+
+        return new OkObjectResult(mailFolders);
+    }
 
     private async Task<List<Message>> HandleKnownSubjects(List<Message> messages)
     {
