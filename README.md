@@ -10,7 +10,6 @@ Løsning som automatisk arkiverer gjenkjennbare e-poster fra en postboks og inn 
     "Values": {
         "AzureWebJobsStorage": "UseDevelopmentStorage=true",
         "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
-        "BlobStorageConnectionString": "ConnectionString",
         "AppName": "postmottak-arkivering-dotnet",
         "Version": "0.0.1",
         "BetterStack_Endpoint": "https://something.betterstackdata.com",
