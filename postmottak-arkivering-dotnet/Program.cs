@@ -13,6 +13,7 @@ builder.UseMiddleware<ErrorHandlingMiddleware>();
 
 builder.Logging.AddVfkLogging();
 
+builder.Services.AddScoped<IBlobService, BlobService>();
 builder.Services.AddSingleton<IGraphService, GraphService>();
 
 // Application Insights isn't enabled by default. See https://aka.ms/AAt8mw4.
