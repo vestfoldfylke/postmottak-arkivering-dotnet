@@ -13,12 +13,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Graph.Models;
 using Microsoft.OpenApi.Models;
 using postmottak_arkivering_dotnet.Contracts;
+using postmottak_arkivering_dotnet.Contracts.Archive;
 using postmottak_arkivering_dotnet.Services;
 
 namespace postmottak_arkivering_dotnet.Functions;
 
 public class Archive
 {
+    private readonly IArchiveService _archiveService;
     private readonly IGraphService _graphService;
     private readonly ILogger<Archive> _logger;
     
@@ -30,13 +32,14 @@ public class Archive
 
     private readonly EmailAddress _replyFromAddress;
     private readonly List<EmailAddress> _replyToAddresses;
-    private readonly string _replySubject;
     private readonly string _replyBody;
 
-    public Archive(IConfiguration configuration, ILogger<Archive> logger, IGraphService graphService)
+    public Archive(IConfiguration configuration, ILogger<Archive> logger, IGraphService graphService,
+        IArchiveService archiveService)
     {
         _logger = logger;
         _graphService = graphService;
+        _archiveService = archiveService;
         
         var knownSubjects = configuration["Postmottak_MailKnownSubjects"] ?? "";
         
@@ -48,17 +51,18 @@ public class Archive
         
         _replyFromAddress = new EmailAddress
         {
-            Address = _postboxUpn,
-            Name = "Arkiveringsrobåten"
+            Address = _postboxUpn
         };
 
         _replyToAddresses =
         [
-            _replyFromAddress
+            new EmailAddress
+            {
+                Address = configuration["Postmottak_ReplyToAddress"] ?? throw new NullReferenceException(),
+            }
         ];
-
-        _replySubject = "Mottatt og spytta på";
-        _replyBody = "Vi har mottatt din henvendelse og driter i hva du mener.";
+        
+        _replyBody = configuration["Postmottak_ReplyBody"] ?? throw new NullReferenceException();
     }
 
     [Function("ArchiveEmails")]
@@ -121,15 +125,26 @@ public class Archive
             }
             
             // TODO: Archive message and any attachments and log successful archiving
+            var result = await _archiveService.Archive(new ArchivePayload
+            {
+                method = "GetCases",
+                service = "CaseService",
+                parameter = new
+                {
+                    CaseNumber = "24/00051"
+                }
+            });
 
-            await _graphService.ReplyMailMessage(_postboxUpn, message.Id!, _replyFromAddress, _replyToAddresses,
-                _replySubject, _replyBody, _replyBody.Contains('<') && _replyBody.Contains('>'));
-            
-            if (!await _graphService.MoveMailMessage(_postboxUpn, message.Id!, _mailFolderFinishedId))
+            Message? postMoveMessage =
+                await _graphService.MoveMailMessage(_postboxUpn, message.Id!, _mailFolderFinishedId);
+            if (postMoveMessage is null)
             {
                 unhandledMessages.Add(message);
                 continue;
             }
+            
+            await _graphService.ReplyMailMessage(_postboxUpn, postMoveMessage.Id!, _replyFromAddress, _replyToAddresses,
+                _replyBody, postMoveMessage.ConversationId!, _mailFolderFinishedId);
             
             _logger.LogInformation("MessageId {MessageId} successfully moved to finished folder", message.Id);
         }
@@ -145,7 +160,9 @@ public class Archive
 
             _logger.LogWarning("MessageId {MessageId} has unknown subject '{Subject}' and will be moved to manual handling folder", message.Id, message.Subject);
             
-            if (!await _graphService.MoveMailMessage(_postboxUpn, message.Id!, _mailFolderManualHandlingId))
+            Message? postMoveMessage =
+                await _graphService.MoveMailMessage(_postboxUpn, message.Id!, _mailFolderManualHandlingId);
+            if (postMoveMessage is null)
             {
                 continue;
             }

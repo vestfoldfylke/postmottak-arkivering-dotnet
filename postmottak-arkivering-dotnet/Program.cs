@@ -13,7 +13,9 @@ builder.UseMiddleware<ErrorHandlingMiddleware>();
 
 builder.Logging.AddVfkLogging();
 
+builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();
 builder.Services.AddSingleton<IGraphService, GraphService>();
+builder.Services.AddSingleton<IArchiveService, ArchiveService>();
 
 // Application Insights isn't enabled by default. See https://aka.ms/AAt8mw4.
 // builder.Services
