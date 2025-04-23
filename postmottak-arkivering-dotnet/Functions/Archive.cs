@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
@@ -21,9 +22,11 @@ namespace postmottak_arkivering_dotnet.Functions;
 public class Archive
 {
     private readonly IArchiveService _archiveService;
+    private readonly IBlobService _blobService;
     private readonly IGraphService _graphService;
     private readonly ILogger<Archive> _logger;
-    
+
+    private readonly string _blobStorageContainerName;
     private readonly string _mailFolderInboxId;
     private readonly string _mailFolderManualHandlingId;
     private readonly string _mailFolderFinishedId;
@@ -35,11 +38,14 @@ public class Archive
     private readonly string _replyBody;
 
     public Archive(IConfiguration configuration, ILogger<Archive> logger, IGraphService graphService,
-        IArchiveService archiveService)
+        IArchiveService archiveService, IBlobService blobService)
     {
         _logger = logger;
         _graphService = graphService;
         _archiveService = archiveService;
+        _blobService = blobService;
+        
+        _blobStorageContainerName = configuration["BlobStorageContainerName"] ?? throw new NullReferenceException();
         
         var knownSubjects = configuration["Postmottak_MailKnownSubjects"] ?? "";
         
@@ -74,7 +80,6 @@ public class Archive
     {
         _logger.LogInformation("ArchiveEmails function started");
         
-        // get all messages from _mailFolderInboxId (extended with attachments)
         var mailMessages = await _graphService.GetMailMessages(_postboxUpn, _mailFolderInboxId, ["attachments"]);
         if (mailMessages.Count == 0)
         {
@@ -111,6 +116,12 @@ public class Archive
 
         foreach (var message in messages)
         {
+            if (string.IsNullOrEmpty(message.Id))
+            {
+                _logger.LogWarning("Message is missing required property Id and will be ignored. Message: {@Message}", message);
+                continue;
+            }
+            
             if (string.IsNullOrEmpty(message.Subject))
             {
                 _logger.LogWarning("MessageId {MessageId} is missing required property Subject and will not be handled. Subject: {Subject}", message.Id, message.Subject);
@@ -124,17 +135,29 @@ public class Archive
                 continue;
             }
             
-            // TODO: Archive message and any attachments and log successful archiving
-            var result = await _archiveService.Archive(new ArchivePayload
+            ArchiveStatus archiveStatus = await _blobService.DownloadBlobContent<ArchiveStatus?>(_blobStorageContainerName, $"{message.Id}/ArchiveStatus.json") ?? new ArchiveStatus();
+            if (message.Attachments is not null && archiveStatus.Attachments.Count < message.Attachments.Count)
             {
-                method = "GetCases",
-                service = "CaseService",
-                parameter = new
+                foreach (var attachment in message.Attachments.Where(a => archiveStatus.Attachments.All(asa => asa.FileName != a.Name)))
                 {
-                    CaseNumber = "24/00051"
+                    if (!attachment.OdataType!.Contains("fileAttachment"))
+                    {
+                        _logger.LogInformation("MessageId {MessageId} has attachment of unknown type ({Type}) and will not be handled",
+                            message.Id, attachment.OdataType);
+                        unhandledMessages.Add(message);
+                        continue;
+                    }
+                
+                    var fileAttachment = attachment as FileAttachment;
+                    await _blobService.UploadBlobFromStream(_blobStorageContainerName, $"{message.Id}/attachments/{fileAttachment!.Name!}", fileAttachment.ContentBytes!);
+                    archiveStatus.Attachments.Add(new AttachmentStatus(fileAttachment.Name!, DateTime.UtcNow));
                 }
-            });
-
+                
+                await UpdateArchiveStatus(message.Id, archiveStatus);
+            }
+            
+            await ArchiveMessage(message, archiveStatus);
+            
             Message? postMoveMessage =
                 await _graphService.MoveMailMessage(_postboxUpn, message.Id!, _mailFolderFinishedId);
             if (postMoveMessage is null)
@@ -143,10 +166,12 @@ public class Archive
                 continue;
             }
             
+            await _blobService.RemoveBlobs(_blobStorageContainerName, message.Id);
+            
             await _graphService.ReplyMailMessage(_postboxUpn, postMoveMessage.Id!, _replyFromAddress, _replyToAddresses,
                 _replyBody, postMoveMessage.ConversationId!, _mailFolderFinishedId);
             
-            _logger.LogInformation("MessageId {MessageId} successfully moved to finished folder", message.Id);
+            _logger.LogInformation("MessageId {MessageId} automatically handled and successfully moved to finished folder", message.Id);
         }
 
         return unhandledMessages;
@@ -172,4 +197,31 @@ public class Archive
     }
 
     private bool IsKnownSubject(string subject) => _mailKnownSubjects.Contains(subject, StringComparer.OrdinalIgnoreCase);
+    
+    private Task UpdateArchiveStatus(string messageId, ArchiveStatus archiveStatus) =>
+        _blobService.UploadBlob(_blobStorageContainerName, $"{messageId}/ArchiveStatus.json", JsonSerializer.Serialize(archiveStatus));
+
+    private async Task ArchiveMessage(Message message, ArchiveStatus archiveStatus)
+    {
+        if (archiveStatus.Archived is not null && !string.IsNullOrEmpty(archiveStatus.CaseNumber))
+        {
+            _logger.LogInformation("MessageId {MessageId} has already been archived at {@ArchiveStatus} with CaseNumber {CaseNumber}",
+                message.Id, archiveStatus.Archived, archiveStatus.CaseNumber);
+            return;
+        }
+        
+        /*var result = await _archiveService.Archive(new ArchivePayload
+        {
+            method = "GetCases",
+            service = "CaseService",
+            parameter = new
+            {
+                CaseNumber = "24/00051"
+            }
+        });*/
+        archiveStatus.Archived = DateTime.UtcNow;
+        archiveStatus.CaseNumber = "whatever";
+            
+        await UpdateArchiveStatus(message.Id!, archiveStatus);
+    }
 }

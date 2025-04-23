@@ -142,7 +142,6 @@ public class GraphService : IGraphService
         try
         {
             await _graphClient.Users[userPrincipalName].Messages[messageId].Reply.PostAsync(replyRequestBody);
-            _logger.LogInformation("MessageId {MessageId} successfully replied to in {UserPrincipalName}. ReplyBody: {@ReplyBody}", messageId, userPrincipalName, replyRequestBody);
 
             return true;
         }

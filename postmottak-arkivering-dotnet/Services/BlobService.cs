@@ -1,0 +1,97 @@
+using System;
+using System.IO;
+using System.Text;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Azure;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+
+namespace postmottak_arkivering_dotnet.Services;
+
+public interface IBlobService
+{
+    Task<T?> DownloadBlobContent<T>(string containerName, string blobName, CancellationToken? stoppingToken = null);
+    Task<string?> DownloadBlobContentAsString(string containerName, string blobName, CancellationToken? stoppingToken = null);
+    Task RemoveBlobs(string containerName, string blobPath, CancellationToken? stoppingToken = null);
+    Task UploadBlob(string containerName, string blobName, string content, CancellationToken? stoppingToken = null);
+    Task UploadBlobFromStream(string containerName, string blobName, byte[] bytes, CancellationToken? stoppingToken = null);
+}
+
+public class BlobService : IBlobService
+{
+    private readonly BlobServiceClient _blobServiceClient;
+    private readonly ILogger<BlobService> _logger;
+    
+    public BlobService(IConfiguration config, ILogger<BlobService> logger)
+    {
+        _blobServiceClient = new BlobServiceClient(config["BlobStorageConnectionString"] ?? throw new NullReferenceException());
+        _logger = logger;
+    }
+    
+    public Task<string?> DownloadBlobContentAsString(string containerName, string blobName, CancellationToken? stoppingToken = null)
+        => GetBlobContentAsString(containerName, blobName, stoppingToken);
+    
+    public async Task<T?> DownloadBlobContent<T>(string containerName, string blobName, CancellationToken? stoppingToken = null)
+    {
+        var content = await GetBlobContentAsString(containerName, blobName, stoppingToken);
+        if (string.IsNullOrEmpty(content))
+        {
+            return default;
+        }
+
+        return JsonSerializer.Deserialize<T?>(content) ?? throw new InvalidOperationException("Failed to deserialize blob content"); 
+    }
+
+    public async Task RemoveBlobs(string containerName, string blobPath, CancellationToken? stoppingToken = null)
+    {
+        var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+        
+        var blobs = containerClient.GetBlobsAsync(prefix: blobPath, cancellationToken: stoppingToken ?? CancellationToken.None);
+        await foreach (var blob in blobs)
+        {
+            await containerClient.DeleteBlobIfExistsAsync(blob.Name, DeleteSnapshotsOption.IncludeSnapshots, null, stoppingToken ?? CancellationToken.None);
+        }
+    }
+
+    public async Task UploadBlob(string containerName, string blobName, string content,
+        CancellationToken? stoppingToken = null)
+    {
+        byte[] bytes = Encoding.UTF8.GetBytes(content);
+
+        await UploadBlobAsBytes(containerName, blobName, bytes, stoppingToken);
+    }
+    
+    public Task UploadBlobFromStream(string containerName, string blobName, byte[] bytes, CancellationToken? stoppingToken = null) =>
+        UploadBlobAsBytes(containerName, blobName, bytes, stoppingToken);
+    
+    private async Task<string?> GetBlobContentAsString(string containerName, string blobName, CancellationToken? stoppingToken = null)
+    {
+        var client = _blobServiceClient.GetBlobContainerClient(containerName);
+
+        try
+        {
+            var blob = await client.GetBlobClient(blobName).DownloadAsync(stoppingToken ?? CancellationToken.None);
+
+            using var reader = new StreamReader(blob.Value.Content);
+            var content = await reader.ReadToEndAsync(stoppingToken ?? CancellationToken.None);
+
+            return content;
+        }
+        catch (RequestFailedException)
+        {
+            return null;
+        }
+    }
+    
+    private async Task UploadBlobAsBytes(string containerName, string blobName, byte[] bytes, CancellationToken? stoppingToken = null)
+    {
+        var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+        var blobClient = containerClient.GetBlobClient(blobName);
+        
+        await blobClient.UploadAsync(new BinaryData(bytes), true, stoppingToken ?? CancellationToken.None);
+    }
+}
