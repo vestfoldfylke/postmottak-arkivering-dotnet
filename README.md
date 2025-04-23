@@ -2,7 +2,8 @@
 Løsning som automatisk arkiverer gjenkjennbare e-poster fra en postboks og inn i arkivsystem
 
 ## Skisse
-![image](https://github.com/user-attachments/assets/ec3079e7-8705-4dd5-ab9b-59893f381777)
+![image](https://github.com/user-attachments/assets/94dd7042-7cec-49bc-8da0-aa37f441bfa5)
+
 
 ## Oppsett
 - Lag en outlook regel på innboks-mappen som flytter e-post som skal sjekkes for automatisering/automatiseres til {Postmottak_MailFolder_Inbox_Id}
