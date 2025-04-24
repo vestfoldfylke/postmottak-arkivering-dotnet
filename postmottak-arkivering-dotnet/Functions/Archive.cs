@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Azure.Storage.Blobs.Models;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http;
@@ -80,16 +81,76 @@ public class Archive
     {
         _logger.LogInformation("ArchiveEmails function started");
         
-        var mailMessages = await _graphService.GetMailMessages(_postboxUpn, _mailFolderInboxId, ["attachments"]);
+        var mailMessages = await _graphService.GetMailMessages(_postboxUpn, _mailFolderInboxId);
         if (mailMessages.Count == 0)
         {
             _logger.LogInformation("No messages found in Inbox folder");
             return new OkResult();
         }
-        
-        List<Message> unhandledMessages = await HandleKnownSubjects(mailMessages);
 
-        await HandleUnknownMessages(unhandledMessages);
+        var mailBlobs = await _blobService.ListBlobs(_blobStorageContainerName, "");
+
+        List<(IEmailType, FlowStatus)> messagesToHandle = [];
+        List<Message> unknownMessages = [];
+
+        foreach (var message in mailMessages)
+        {
+            BlobItem? blobItem = mailBlobs.Find(blob => blob.Name.StartsWith(message.Id!));
+
+            if (blobItem is not null)
+            { 
+                var flowStatus = await _blobService.DownloadBlobContent<FlowStatus?>(_blobStorageContainerName, blobItem.Name);
+                if (flowStatus is null)
+                {
+                     _logger.LogError("Failed to download blob content for BlobName {BlobName}", blobItem.Name);
+                     continue;
+                }
+
+                if (flowStatus.RetryAfter is not null && flowStatus.RetryAfter > DateTime.UtcNow)
+                {
+                     _logger.LogInformation("MessageId {MessageId} has retry after {RetryAfter} and will not be handled now", message.Id, flowStatus.RetryAfter);
+                     continue;
+                }
+
+                Type? type = Type.GetType($"postmottak_arkivering_dotnet.Contracts.Archive.{flowStatus.Type}");
+                if (type is null)
+                {
+                     _logger.LogError("Type {Type} not found for MessageId {MessageId}", flowStatus.Type, message.Id);
+                     continue;
+                }
+                
+                IEmailType? existingEmailType = Activator.CreateInstance(type) as IEmailType; // CaseNumberEmailType
+                if (existingEmailType is null)
+                {
+                     _logger.LogError("Failed to create instance of IEmailType for Type {Type}", flowStatus.Type);
+                     continue;
+                }
+
+                messagesToHandle.Add((existingEmailType, flowStatus));
+                continue;
+            }
+            
+            IEmailType? emailType = await EmailType.GetEmailType(message);
+            if (emailType is null)
+            {
+                unknownMessages.Add(message);
+                continue;
+            }
+
+            messagesToHandle.Add((emailType, new FlowStatus
+            {
+                Type = emailType.GetType().Name,
+                Message = message
+            }));
+        }
+        
+        await HandleUnknownMessages(unknownMessages);
+        
+        await HandleKnownMessageTypes(messagesToHandle);
+        
+        /*List<Message> unhandledMessages = await HandleKnownSubjects(mailMessages);
+
+        await HandleUnknownMessages(unhandledMessages);*/
         
         return new OkResult();
     }
@@ -110,7 +171,26 @@ public class Archive
         return new OkObjectResult(mailFolders);
     }
 
-    private async Task<List<Message>> HandleKnownSubjects(List<Message> messages)
+    private async Task HandleKnownMessageTypes(List<(IEmailType, FlowStatus)> messagesToHandle)
+    {
+        foreach ((IEmailType emailType, FlowStatus flowStatus) in messagesToHandle)
+        {
+            try
+            {
+                await emailType.HandleMessage(flowStatus, _archiveService);
+            }
+            catch (Exception ex)
+            {
+                flowStatus.ErrorMessage = ex.Message;
+                flowStatus.ErrorStack = ex.StackTrace;
+                flowStatus.RetryAfter = DateTime.UtcNow.AddSeconds(5); // TODO: Change this to a more appropriate value
+
+                await UpdateArchiveStatus(flowStatus.Message.Id!, flowStatus);
+            }
+        }
+    }
+    
+    /*private async Task<List<Message>> HandleKnownSubjects(List<Message> messages)
     {
         var unhandledMessages = new List<Message>();
 
@@ -135,28 +215,9 @@ public class Archive
                 continue;
             }
             
-            ArchiveStatus archiveStatus = await _blobService.DownloadBlobContent<ArchiveStatus?>(_blobStorageContainerName, $"{message.Id}/ArchiveStatus.json") ?? new ArchiveStatus();
-            if (message.Attachments is not null && archiveStatus.Attachments.Count < message.Attachments.Count)
-            {
-                foreach (var attachment in message.Attachments.Where(a => archiveStatus.Attachments.All(asa => asa.FileName != a.Name)))
-                {
-                    if (!attachment.OdataType!.Contains("fileAttachment"))
-                    {
-                        _logger.LogInformation("MessageId {MessageId} has attachment of unknown type ({Type}) and will not be handled",
-                            message.Id, attachment.OdataType);
-                        unhandledMessages.Add(message);
-                        continue;
-                    }
-                
-                    var fileAttachment = attachment as FileAttachment;
-                    await _blobService.UploadBlobFromStream(_blobStorageContainerName, $"{message.Id}/attachments/{fileAttachment!.Name!}", fileAttachment.ContentBytes!);
-                    archiveStatus.Attachments.Add(new AttachmentStatus(fileAttachment.Name!, DateTime.UtcNow));
-                }
-                
-                await UpdateArchiveStatus(message.Id, archiveStatus);
-            }
+            FlowStatus flowStatus = await _blobService.DownloadBlobContent<FlowStatus?>(_blobStorageContainerName, $"{message.Id}-flowstatus.json") ?? new FlowStatus();
             
-            await ArchiveMessage(message, archiveStatus);
+            await ArchiveMessage(message, flowStatus);
             
             Message? postMoveMessage =
                 await _graphService.MoveMailMessage(_postboxUpn, message.Id!, _mailFolderFinishedId);
@@ -175,14 +236,12 @@ public class Archive
         }
 
         return unhandledMessages;
-    }
+    }*/
 
     private async Task HandleUnknownMessages(List<Message> messages)
     {
         foreach (var message in messages)
         {
-            // TODO: Use KI to figure out how to archive this message
-
             _logger.LogWarning("MessageId {MessageId} has unknown subject '{Subject}' and will be moved to manual handling folder", message.Id, message.Subject);
             
             Message? postMoveMessage =
@@ -198,30 +257,25 @@ public class Archive
 
     private bool IsKnownSubject(string subject) => _mailKnownSubjects.Contains(subject, StringComparer.OrdinalIgnoreCase);
     
-    private Task UpdateArchiveStatus(string messageId, ArchiveStatus archiveStatus) =>
-        _blobService.UploadBlob(_blobStorageContainerName, $"{messageId}/ArchiveStatus.json", JsonSerializer.Serialize(archiveStatus));
-
-    private async Task ArchiveMessage(Message message, ArchiveStatus archiveStatus)
-    {
-        if (archiveStatus.Archived is not null && !string.IsNullOrEmpty(archiveStatus.CaseNumber))
+    private Task UpdateArchiveStatus(string messageId, FlowStatus flowStatus) =>
+        _blobService.UploadBlob(_blobStorageContainerName, $"{messageId}-flowstatus.json", JsonSerializer.Serialize(flowStatus, new JsonSerializerOptions
         {
-            _logger.LogInformation("MessageId {MessageId} has already been archived at {@ArchiveStatus} with CaseNumber {CaseNumber}",
-                message.Id, archiveStatus.Archived, archiveStatus.CaseNumber);
+            IndentSize = 2,
+            WriteIndented = true
+        }));
+
+    /*private async Task ArchiveMessage(Message message, FlowStatus flowStatus)
+    {
+        if (flowStatus.Archive.Archived is not null && !string.IsNullOrEmpty(flowStatus.Archive.CaseNumber))
+        {
+            _logger.LogInformation("MessageId {MessageId} has already been archived at {@ArchiveDateTime} with CaseNumber {CaseNumber}",
+                message.Id, flowStatus.Archive.Archived, flowStatus.Archive.CaseNumber);
             return;
         }
         
-        /*var result = await _archiveService.Archive(new ArchivePayload
-        {
-            method = "GetCases",
-            service = "CaseService",
-            parameter = new
-            {
-                CaseNumber = "24/00051"
-            }
-        });*/
-        archiveStatus.Archived = DateTime.UtcNow;
-        archiveStatus.CaseNumber = "whatever";
-            
-        await UpdateArchiveStatus(message.Id!, archiveStatus);
-    }
+        flowStatus.Archive.Archived = DateTime.UtcNow;
+        flowStatus.Archive.CaseNumber = "whatever";
+
+        await UpdateArchiveStatus(message.Id!, flowStatus);
+    }*/
 }

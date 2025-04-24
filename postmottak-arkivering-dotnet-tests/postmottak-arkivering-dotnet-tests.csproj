@@ -20,4 +20,8 @@
         <Using Include="Xunit"/>
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\postmottak-arkivering-dotnet\postmottak-arkivering-dotnet.csproj" />
+    </ItemGroup>
+
 </Project>

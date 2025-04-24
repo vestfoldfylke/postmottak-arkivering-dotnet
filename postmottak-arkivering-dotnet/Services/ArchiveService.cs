@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -11,7 +12,14 @@ namespace postmottak_arkivering_dotnet.Services;
 
 public interface IArchiveService
 {
-    Task<string> Archive(ArchivePayload payload);
+    Task<JsonNode?> Archive(ArchivePayload payload);
+    Task<JsonNode> CreateCase(object parameter);
+    // CreateDocument
+    // SignOff
+    // SyncEnterprise
+    // SyncPrivatePerson
+    // UploadFiles
+    Task<JsonArray> GetCases(object parameter);
 }
 
 public class ArchiveService : IArchiveService
@@ -48,7 +56,44 @@ public class ArchiveService : IArchiveService
         };
     }
 
-    public async Task<string> Archive(ArchivePayload payload)
+    public async Task<JsonArray> GetCases(object parameter)
+    {
+        var payload = new ArchivePayload
+        {
+            method = "GetCases",
+            service = "CaseService",
+            parameter = parameter
+        };
+        
+        if (await Archive(payload) is not JsonArray result)
+        {
+            _logger.LogError("Failed to get cases with Parameter {@Parameter}", parameter);
+            throw new InvalidOperationException($"Failed to get cases with Parameter {JsonSerializer.Serialize(parameter)}");
+        }
+
+        return result;
+    }
+    
+    public async Task<JsonNode> CreateCase(object parameter)
+    {
+        var payload = new ArchivePayload
+        {
+            method = "CreateCase",
+            service = "CaseService",
+            parameter = parameter
+        };
+
+        var result = await Archive(payload);
+        if (result is null)
+        {
+            _logger.LogError("Failed to create case with Parameter {@Parameter}", parameter);
+            throw new InvalidOperationException($"Failed to create case with Parameter {JsonSerializer.Serialize(parameter)}");
+        }
+
+        return result;
+    }
+    
+    public async Task<JsonNode?> Archive(ArchivePayload payload)
     {
         var token = await _authService.GetAccessToken(_scopes);
         
@@ -66,6 +111,6 @@ public class ArchiveService : IArchiveService
             throw new InvalidOperationException(errorMessage.message);
         }
 
-        return resultContent;
+        return JsonNode.Parse(resultContent);
     }
 }

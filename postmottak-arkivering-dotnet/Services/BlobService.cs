@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -16,6 +17,7 @@ public interface IBlobService
 {
     Task<T?> DownloadBlobContent<T>(string containerName, string blobName, CancellationToken? stoppingToken = null);
     Task<string?> DownloadBlobContentAsString(string containerName, string blobName, CancellationToken? stoppingToken = null);
+    Task<List<BlobItem>> ListBlobs(string containerName, string blobPath, CancellationToken? stoppingToken = null);
     Task RemoveBlobs(string containerName, string blobPath, CancellationToken? stoppingToken = null);
     Task UploadBlob(string containerName, string blobName, string content, CancellationToken? stoppingToken = null);
     Task UploadBlobFromStream(string containerName, string blobName, byte[] bytes, CancellationToken? stoppingToken = null);
@@ -46,12 +48,26 @@ public class BlobService : IBlobService
         return JsonSerializer.Deserialize<T?>(content) ?? throw new InvalidOperationException("Failed to deserialize blob content"); 
     }
 
+    public async Task<List<BlobItem>> ListBlobs(string containerName, string blobPath, CancellationToken? stoppingToken = null)
+    {
+        var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+        List<BlobItem> blobItems = [];
+        
+        var blobs = containerClient.GetBlobsAsync(prefix: blobPath, cancellationToken: stoppingToken ?? CancellationToken.None);
+        await foreach (var blob in blobs)
+        {
+            blobItems.Add(blob);
+        }
+
+        return blobItems;
+    }
+
     public async Task RemoveBlobs(string containerName, string blobPath, CancellationToken? stoppingToken = null)
     {
         var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
         
-        var blobs = containerClient.GetBlobsAsync(prefix: blobPath, cancellationToken: stoppingToken ?? CancellationToken.None);
-        await foreach (var blob in blobs)
+        var blobs = await ListBlobs(containerName, blobPath, stoppingToken);
+        foreach (var blob in blobs)
         {
             await containerClient.DeleteBlobIfExistsAsync(blob.Name, DeleteSnapshotsOption.IncludeSnapshots, null, stoppingToken ?? CancellationToken.None);
         }

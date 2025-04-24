@@ -29,6 +29,9 @@ public class GraphService : IGraphService
 {
     private readonly GraphServiceClient _graphClient;
     private readonly ILogger<GraphService> _logger;
+    
+    private const string ImmutableIdHeader = "Prefer";
+    private const string ImmutableIdHeaderValue = "IdType=\"ImmutableId\"";
 
     public GraphService(ILogger<GraphService> logger, IAuthenticationService authenticationService)
     {
@@ -38,7 +41,8 @@ public class GraphService : IGraphService
 
     public async Task<List<MailFolder>> GetMailFolders(string userPrincipalName)
     {
-        var mailFolders = await _graphClient.Users[userPrincipalName].MailFolders.GetAsync();
+        var mailFolders = await _graphClient.Users[userPrincipalName].MailFolders.GetAsync(
+            configuration => configuration.Headers.Add(ImmutableIdHeader, ImmutableIdHeaderValue));
         if (mailFolders?.Value is null)
         {
             return [];
@@ -50,7 +54,8 @@ public class GraphService : IGraphService
     public async Task<List<MailFolder>> GetMailChildFolders(string userPrincipalName, string folderId)
     {
         //using AzureEventSourceListener listener = AzureEventSourceListener.CreateConsoleLogger();
-        var childFolders = await _graphClient.Users[userPrincipalName].MailFolders[folderId].ChildFolders.GetAsync();
+        var childFolders = await _graphClient.Users[userPrincipalName].MailFolders[folderId].ChildFolders.GetAsync(
+            configuration => configuration.Headers.Add(ImmutableIdHeader, ImmutableIdHeaderValue));
         if (childFolders?.Value is null)
         {
             return [];
@@ -61,7 +66,8 @@ public class GraphService : IGraphService
 
     public async Task<List<Attachment>> GetMailMessageAttachments(string userPrincipalName, string messageId)
     {
-        var attachments = await _graphClient.Users[userPrincipalName].Messages[messageId].Attachments.GetAsync();
+        var attachments = await _graphClient.Users[userPrincipalName].Messages[messageId].Attachments.GetAsync(
+            configuration => configuration.Headers.Add(ImmutableIdHeader, ImmutableIdHeaderValue));
         if (attachments?.Value is null)
         {
             return [];
@@ -73,10 +79,11 @@ public class GraphService : IGraphService
     public async Task<List<Message>> GetMailMessages(string userPrincipalName, string folderId, string[]? expandedProperties = null)
     {
         /*using AzureEventSourceListener listener = AzureEventSourceListener.CreateConsoleLogger();*/
-        Action<RequestConfiguration<MessagesRequestBuilder.MessagesRequestBuilderGetQueryParameters>>? options =
-            expandedProperties == null || expandedProperties.Length == 0
-                ? null
-                : options => options.QueryParameters.Expand = expandedProperties;
+        Action<RequestConfiguration<MessagesRequestBuilder.MessagesRequestBuilderGetQueryParameters>>? options = config =>
+        {
+            config.QueryParameters.Expand = expandedProperties;
+            config.Headers.Add(ImmutableIdHeader, ImmutableIdHeaderValue);
+        };
         
         var mailMessages = await _graphClient.Users[userPrincipalName].MailFolders[folderId].Messages.GetAsync(options);
         if (mailMessages?.Value is null)
@@ -94,7 +101,7 @@ public class GraphService : IGraphService
             var message = await _graphClient.Users[userPrincipalName].Messages[messageId].Move.PostAsync(new MovePostRequestBody
             {
                 DestinationId = destinationFolderId
-            });
+            }, configuration => configuration.Headers.Add(ImmutableIdHeader, ImmutableIdHeaderValue));
 
             if (message is null)
             {
@@ -141,7 +148,8 @@ public class GraphService : IGraphService
         
         try
         {
-            await _graphClient.Users[userPrincipalName].Messages[messageId].Reply.PostAsync(replyRequestBody);
+            await _graphClient.Users[userPrincipalName].Messages[messageId].Reply.PostAsync(replyRequestBody,
+                configuration => configuration.Headers.Add(ImmutableIdHeader, ImmutableIdHeaderValue));
 
             return true;
         }
