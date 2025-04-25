@@ -28,7 +28,6 @@ public class ArchiveService : IArchiveService
     private readonly ILogger<ArchiveService> _logger;
 
     private readonly HttpClient _archiveClient;
-
     private readonly string[] _scopes;
 
     public ArchiveService(IConfiguration config, IAuthenticationService authService, ILogger<ArchiveService> logger)
@@ -106,9 +105,9 @@ public class ArchiveService : IArchiveService
         
         if (!result.IsSuccessStatusCode)
         {
-            var errorMessage = JsonSerializer.Deserialize<ArchiveErrorMessage>(resultContent) ?? throw new InvalidOperationException("Failed to deserialize error message");
-            _logger.LogError("Archive error: {Message} : StatusCode: {StatusCode}. Data: {@Data}", errorMessage.message, result.StatusCode, errorMessage.data);
-            throw new InvalidOperationException(errorMessage.message);
+            var errorMessage = JsonSerializer.Deserialize<ArchiveErrorMessage>(resultContent, new JsonSerializerOptions{ PropertyNamingPolicy = JsonNamingPolicy.CamelCase}) ?? throw new InvalidOperationException("Failed to deserialize error message");
+            _logger.LogError("Archive error: {Message} : StatusCode: {StatusCode}. Data: {@Data}", errorMessage.Message, result.StatusCode, errorMessage.Data);
+            throw new InvalidOperationException(errorMessage.Message);
         }
 
         return JsonNode.Parse(resultContent);
