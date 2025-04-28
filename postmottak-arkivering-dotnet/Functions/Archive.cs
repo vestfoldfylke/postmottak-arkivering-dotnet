@@ -15,8 +15,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Graph.Models;
 using Microsoft.OpenApi.Models;
 using postmottak_arkivering_dotnet.Contracts;
+using postmottak_arkivering_dotnet.Contracts.Ai;
 using postmottak_arkivering_dotnet.Contracts.Archive;
 using postmottak_arkivering_dotnet.Services;
+using postmottak_arkivering_dotnet.Services.AI;
+using FromBodyAttribute = Microsoft.Azure.Functions.Worker.Http.FromBodyAttribute;
 
 namespace postmottak_arkivering_dotnet.Functions;
 
@@ -25,6 +28,7 @@ public class Archive
     private readonly IArchiveService _archiveService;
     private readonly IBlobService _blobService;
     private readonly IGraphService _graphService;
+    private readonly IRf1350AgentService _rf1350AgentService;
     private readonly ILogger<Archive> _logger;
 
     private readonly string _blobStorageContainerName;
@@ -39,12 +43,13 @@ public class Archive
     private readonly string _replyBody;
 
     public Archive(IConfiguration configuration, ILogger<Archive> logger, IGraphService graphService,
-        IArchiveService archiveService, IBlobService blobService)
+        IArchiveService archiveService, IBlobService blobService, IRf1350AgentService rf1350AgentService)
     {
         _logger = logger;
         _graphService = graphService;
         _archiveService = archiveService;
         _blobService = blobService;
+        _rf1350AgentService = rf1350AgentService;
         
         _blobStorageContainerName = configuration["BlobStorageContainerName"] ?? throw new NullReferenceException();
         
@@ -169,6 +174,23 @@ public class Archive
             : await _graphService.GetMailFolders(_postboxUpn);
 
         return new OkObjectResult(mailFolders);
+    }
+    
+    [Function("AskArntIvan")]
+    [OpenApiOperation(operationId: "AskArntIvan")]
+    [OpenApiSecurity("Authentication", SecuritySchemeType.ApiKey, Name = "X-Functions-Key", In = OpenApiSecurityLocationType.Header)]
+    [OpenApiRequestBody("application/json", typeof(AiPromptRequest), Description = "Prompt to ask Arnt Ivan")]
+    [OpenApiResponseWithBody(HttpStatusCode.OK, "text/plain", typeof(string), Description = "Response from Arnt Ivan")]
+    [OpenApiResponseWithBody(HttpStatusCode.InternalServerError, "text/plain", typeof(string), Description = "Error occured")]
+    public async Task<IActionResult> AskArntIvan([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequest req, [FromBody] AiPromptRequest promptRequest)
+    {
+        _logger.LogInformation("AskArntIvan function started");
+        
+        var result = await _rf1350AgentService.Ask(promptRequest.Prompt);
+
+        var response = AiHelper.GetLatestAnswer<Rf1350ChatResult>(result);
+        
+        return new OkObjectResult(response);
     }
 
     private async Task HandleKnownMessageTypes(List<(IEmailType, FlowStatus)> messagesToHandle)

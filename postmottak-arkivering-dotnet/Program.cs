@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using postmottak_arkivering_dotnet.Middleware;
 using postmottak_arkivering_dotnet.Services;
+using postmottak_arkivering_dotnet.Services.AI;
 using VFK.Extensions.Logging;
 
 var builder = FunctionsApplication.CreateBuilder(args);
@@ -14,6 +15,7 @@ builder.UseMiddleware<ErrorHandlingMiddleware>();
 builder.Logging.AddVfkLogging();
 
 builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();
+builder.Services.AddSingleton<IRf1350AgentService, Rf1350AgentService>();
 builder.Services.AddSingleton<IGraphService, GraphService>();
 builder.Services.AddSingleton<IArchiveService, ArchiveService>();
 builder.Services.AddSingleton<IBlobService, BlobService>();

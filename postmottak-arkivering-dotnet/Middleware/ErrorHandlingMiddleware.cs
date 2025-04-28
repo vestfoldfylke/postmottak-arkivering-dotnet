@@ -47,7 +47,7 @@ public class ErrorHandlingMiddleware : IFunctionsWorkerMiddleware
         }
     }
 
-    private static async Task HandleException(FunctionContext context, string message, string exceptionMessage)
+    private static async Task HandleException(FunctionContext context, string message, string? exceptionMessage)
     {
         var request = await context.GetHttpRequestDataAsync();
         var response = request!.CreateResponse();
