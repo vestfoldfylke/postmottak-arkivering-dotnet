@@ -12,10 +12,10 @@ namespace postmottak_arkivering_dotnet.Contracts.Email;
 
 public class Rf1350EmailType : IEmailType
 {
-    public string Id { get; } = "RF1350";
     public string Title { get; } = "RF 13.50";
 
-    private readonly string _fromAddress = "ikkesvar@regionalforvaltning.no";
+    private const string FromAddress = "ikkesvar@regionalforvaltning.no";
+
     private readonly string[] _subjects = [
         "RF13.50 - Automatisk kvittering på innsendt søknad",
         "RF13.50 - Automatisk epost til arkiv"
@@ -41,7 +41,7 @@ public class Rf1350EmailType : IEmailType
             return false;
         }
 
-        if (!message.From.EmailAddress.Address.Equals(_fromAddress, StringComparison.OrdinalIgnoreCase)
+        if (!message.From.EmailAddress.Address.Equals(FromAddress, StringComparison.OrdinalIgnoreCase)
             || !_subjects.Any(subject => message.Subject.StartsWith(subject, StringComparison.OrdinalIgnoreCase)))
         {
             return false;

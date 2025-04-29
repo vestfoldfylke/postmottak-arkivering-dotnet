@@ -7,7 +7,6 @@ namespace postmottak_arkivering_dotnet.Contracts.Email;
 
 public interface IEmailType
 {
-    string Id { get; }
     string Title { get; }
     
     Task<bool> MatchCriteria(Message message, IAiAgentService aiAgentService);
@@ -47,7 +46,6 @@ public static class EmailType
 
 public class CaseNumberEmailType : IEmailType
 {
-    public string Id { get; } = "Osteklut";
     public string Title { get; } = "Jarlsbergfilla";
     
     public async Task<bool> MatchCriteria(Message message, IAiAgentService aiAgentService)
