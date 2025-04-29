@@ -196,7 +196,26 @@ public class Archive
         {
             try
             {
-                await emailType.HandleMessage(flowStatus, _archiveService, _aiAgentService);
+                var handledMessage = await emailType.HandleMessage(flowStatus, _archiveService, _aiAgentService);
+                
+                // update body to reflect that its handled
+                Message message = new Message
+                {
+                    Body = new ItemBody
+                    {
+                        Content =
+                            @$"<div style='border: 1px solid black; padding: 10px; background-color: #f9f9f9;'>
+                            <div style='color: red;'>Automatisk håndteringstype: <b>{emailType.Title}</b><br />
+                            Klokkeslett: <i>{DateTime.Now:dd.MM.yyyy HH:mm:ss}</i><br />
+                            Melding: {handledMessage}</div></div><br /><br/>{flowStatus.Message.Body!.Content}",
+                        ContentType = BodyType.Html
+                    },
+                };
+
+                await _graphService.PatchMessage(_postboxUpn, flowStatus.Message.Id!, message);
+
+                // move message to finished folder
+                await _graphService.MoveMailMessage(_postboxUpn, flowStatus.Message.Id!, _mailFolderFinishedId);
             }
             catch (Exception ex)
             {

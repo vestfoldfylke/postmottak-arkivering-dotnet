@@ -21,6 +21,7 @@ public interface IGraphService
     Task<List<Attachment>> GetMailMessageAttachments(string userPrincipalName, string messageId);
     Task<List<Message>> GetMailMessages(string userPrincipalName, string folderId, string[]? expandedProperties = null);
     Task<Message?> MoveMailMessage(string userPrincipalName, string messageId, string destinationFolderId);
+    Task<bool> PatchMessage(string userPrincipalName, string messageId, Message message);
     Task<bool> ReplyMailMessage(string userPrincipalName, string messageId,
         EmailAddress fromAddress, List<EmailAddress> toAddresses, string replyBody, string conversationId, string parentFolderId);
 }
@@ -114,6 +115,22 @@ public class GraphService : IGraphService
         {
             _logger.LogError(ex, "MessageId {MessageId} failed to be moved to FolderId {DestinationFolderId} in {UserPrincipalName}", messageId, destinationFolderId, userPrincipalName);
             return null;
+        }
+    }
+    
+    public async Task<bool> PatchMessage(string userPrincipalName, string messageId, Message message)
+    {
+        try
+        {
+            await _graphClient.Users[userPrincipalName].Messages[messageId].PatchAsync(message,
+                configuration => configuration.Headers.Add(ImmutableIdHeader, ImmutableIdHeaderValue));
+
+            return true;
+        }
+        catch (ODataError ex)
+        {
+            _logger.LogError(ex, "MessageId {MessageId} failed to be patched in {UserPrincipalName}. Message: {@Message}", messageId, userPrincipalName, message);
+            throw;
         }
     }
     
