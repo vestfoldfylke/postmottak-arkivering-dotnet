@@ -17,6 +17,7 @@ public interface IArchiveService
     Task<JsonNode> CreateCase(object parameter);
     Task<JsonNode> CreateDocument(object parameter);
     Task<JsonArray> GetCases(object parameter);
+    Task<JsonArray> GetProjects(object parameter);
     Task<JsonNode> SignOff(object parameter);
 
     Task<JsonNode> SyncEnterprise(string organizationNr);
@@ -154,6 +155,24 @@ public class ArchiveService : IArchiveService
         {
             _logger.LogError("Failed to get cases with Parameter {@Parameter}", parameter);
             throw new InvalidOperationException($"Failed to get cases with Parameter {JsonSerializer.Serialize(parameter, _indentedSerializer)}");
+        }
+
+        return result;
+    }
+
+    public async Task<JsonArray> GetProjects(object parameter)
+    {
+        var payload = new ArchivePayload
+        {
+            service = "ProjectService",
+            method = "GetProjects",
+            parameter = parameter
+        };
+        
+        if (await Archive(payload) is not JsonArray result)
+        {
+            _logger.LogError("Failed to get projects with Parameter {@Parameter}", parameter);
+            throw new InvalidOperationException($"Failed to get projects with Parameter {JsonSerializer.Serialize(parameter, _indentedSerializer)}");
         }
 
         return result;

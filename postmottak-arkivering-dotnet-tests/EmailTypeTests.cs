@@ -2,12 +2,20 @@ using System;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Graph.Models;
-using postmottak_arkivering_dotnet.Contracts.Archive;
+using postmottak_arkivering_dotnet.Contracts.Email;
+using postmottak_arkivering_dotnet.Services;
 
 namespace postmottak_arkivering_dotnet_tests;
 
 public class EmailTypeTests
 {
+    private readonly IAiAgentService _service;
+    
+    public EmailTypeTests()
+    {
+        _service = NSubstitute.Substitute.For<IAiAgentService>();
+    }
+    
     [Theory]
     [InlineData("Søknad om rusmidler", typeof(CaseNumberEmailType))]
     [InlineData("Søknad om skudd", typeof(CaseNumberEmailType))]
@@ -18,7 +26,7 @@ public class EmailTypeTests
             Subject = subject
         };
 
-        var emailType = await EmailType.GetEmailType(message);
+        var emailType = await EmailType.GetEmailType(message, _service);
         
         Assert.IsAssignableFrom(expectedType, emailType);
     }
@@ -32,7 +40,7 @@ public class EmailTypeTests
             Subject = subject
         };
 
-        var emailType = await EmailType.GetEmailType(message);
+        var emailType = await EmailType.GetEmailType(message, _service);
         
         Assert.Null(emailType);
     }
@@ -54,7 +62,7 @@ public class EmailTypeTests
             Subject = subject
         };
 
-        var emailType = await EmailType.GetEmailType(message);
+        var emailType = await EmailType.GetEmailType(message, _service);
         
         Assert.IsAssignableFrom(expectedType, emailType);
     }
@@ -78,7 +86,7 @@ public class EmailTypeTests
             Subject = subject
         };
 
-        var emailType = await EmailType.GetEmailType(message);
+        var emailType = await EmailType.GetEmailType(message, _service);
         
         Assert.Null(emailType);
     }

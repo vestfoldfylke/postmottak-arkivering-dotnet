@@ -2,7 +2,7 @@ using System;
 using System.Text.Json;
 using Microsoft.SemanticKernel.ChatCompletion;
 
-namespace postmottak_arkivering_dotnet.Services.AI;
+namespace postmottak_arkivering_dotnet.Utils;
 
 public static class AiHelper
 {

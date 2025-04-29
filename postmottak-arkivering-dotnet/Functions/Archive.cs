@@ -16,9 +16,8 @@ using Microsoft.Graph.Models;
 using Microsoft.OpenApi.Models;
 using postmottak_arkivering_dotnet.Contracts;
 using postmottak_arkivering_dotnet.Contracts.Ai;
-using postmottak_arkivering_dotnet.Contracts.Archive;
+using postmottak_arkivering_dotnet.Contracts.Email;
 using postmottak_arkivering_dotnet.Services;
-using postmottak_arkivering_dotnet.Services.AI;
 using FromBodyAttribute = Microsoft.Azure.Functions.Worker.Http.FromBodyAttribute;
 
 namespace postmottak_arkivering_dotnet.Functions;
@@ -28,7 +27,7 @@ public class Archive
     private readonly IArchiveService _archiveService;
     private readonly IBlobService _blobService;
     private readonly IGraphService _graphService;
-    private readonly IRf1350AgentService _rf1350AgentService;
+    private readonly IAiAgentService _aiAgentService;
     private readonly ILogger<Archive> _logger;
 
     private readonly string _blobStorageContainerName;
@@ -43,13 +42,13 @@ public class Archive
     private readonly string _replyBody;
 
     public Archive(IConfiguration configuration, ILogger<Archive> logger, IGraphService graphService,
-        IArchiveService archiveService, IBlobService blobService, IRf1350AgentService rf1350AgentService)
+        IArchiveService archiveService, IBlobService blobService, IAiAgentService aiAgentService)
     {
         _logger = logger;
         _graphService = graphService;
         _archiveService = archiveService;
         _blobService = blobService;
-        _rf1350AgentService = rf1350AgentService;
+        _aiAgentService = aiAgentService;
         
         _blobStorageContainerName = configuration["BlobStorageContainerName"] ?? throw new NullReferenceException();
         
@@ -117,14 +116,14 @@ public class Archive
                      continue;
                 }
 
-                Type? type = Type.GetType($"postmottak_arkivering_dotnet.Contracts.Archive.{flowStatus.Type}");
+                Type? type = Type.GetType($"postmottak_arkivering_dotnet.Contracts.Email.{flowStatus.Type}");
                 if (type is null)
                 {
                      _logger.LogError("Type {Type} not found for MessageId {MessageId}", flowStatus.Type, message.Id);
                      continue;
                 }
                 
-                IEmailType? existingEmailType = Activator.CreateInstance(type) as IEmailType; // CaseNumberEmailType
+                IEmailType? existingEmailType = Activator.CreateInstance(type) as IEmailType;
                 if (existingEmailType is null)
                 {
                      _logger.LogError("Failed to create instance of IEmailType for Type {Type}", flowStatus.Type);
@@ -135,7 +134,7 @@ public class Archive
                 continue;
             }
             
-            IEmailType? emailType = await EmailType.GetEmailType(message);
+            IEmailType? emailType = await EmailType.GetEmailType(message, _aiAgentService);
             if (emailType is null)
             {
                 unknownMessages.Add(message);
@@ -186,11 +185,9 @@ public class Archive
     {
         _logger.LogInformation("AskArntIvan function started");
         
-        var result = await _rf1350AgentService.Ask(promptRequest.Prompt);
-
-        var response = AiHelper.GetLatestAnswer<Rf1350ChatResult>(result);
+        var (_, result) = await _aiAgentService.Rf1350(promptRequest.Prompt);
         
-        return new OkObjectResult(response);
+        return new OkObjectResult(result);
     }
 
     private async Task HandleKnownMessageTypes(List<(IEmailType, FlowStatus)> messagesToHandle)
@@ -199,10 +196,11 @@ public class Archive
         {
             try
             {
-                await emailType.HandleMessage(flowStatus, _archiveService);
+                await emailType.HandleMessage(flowStatus, _archiveService, _aiAgentService);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error handling message with Id {MessageId} of EmailType {EmailType}", flowStatus.Message.Id, emailType.GetType().Name);
                 flowStatus.ErrorMessage = ex.Message;
                 flowStatus.ErrorStack = ex.StackTrace;
                 flowStatus.RetryAfter = DateTime.UtcNow.AddSeconds(5); // TODO: Change this to a more appropriate value
@@ -211,6 +209,30 @@ public class Archive
             }
         }
     }
+
+    private async Task HandleUnknownMessages(List<Message> messages)
+    {
+        foreach (var message in messages)
+        {
+            _logger.LogWarning("MessageId {MessageId} has unknown subject '{Subject}' and will be moved to manual handling folder", message.Id, message.Subject);
+            
+            Message? postMoveMessage =
+                await _graphService.MoveMailMessage(_postboxUpn, message.Id!, _mailFolderManualHandlingId);
+            if (postMoveMessage is null)
+            {
+                continue;
+            }
+            
+            _logger.LogInformation("MessageId {MessageId} successfully moved to manual handling folder", message.Id);
+        }
+    }
+    
+    private Task UpdateArchiveStatus(string messageId, FlowStatus flowStatus) =>
+        _blobService.UploadBlob(_blobStorageContainerName, $"{messageId}-flowstatus.json", JsonSerializer.Serialize(flowStatus, new JsonSerializerOptions
+        {
+            IndentSize = 2,
+            WriteIndented = true
+        }));
     
     /*private async Task<List<Message>> HandleKnownSubjects(List<Message> messages)
     {
@@ -258,35 +280,9 @@ public class Archive
         }
 
         return unhandledMessages;
-    }*/
-
-    private async Task HandleUnknownMessages(List<Message> messages)
-    {
-        foreach (var message in messages)
-        {
-            _logger.LogWarning("MessageId {MessageId} has unknown subject '{Subject}' and will be moved to manual handling folder", message.Id, message.Subject);
-            
-            Message? postMoveMessage =
-                await _graphService.MoveMailMessage(_postboxUpn, message.Id!, _mailFolderManualHandlingId);
-            if (postMoveMessage is null)
-            {
-                continue;
-            }
-            
-            _logger.LogInformation("MessageId {MessageId} successfully moved to manual handling folder", message.Id);
-        }
     }
-
-    private bool IsKnownSubject(string subject) => _mailKnownSubjects.Contains(subject, StringComparer.OrdinalIgnoreCase);
     
-    private Task UpdateArchiveStatus(string messageId, FlowStatus flowStatus) =>
-        _blobService.UploadBlob(_blobStorageContainerName, $"{messageId}-flowstatus.json", JsonSerializer.Serialize(flowStatus, new JsonSerializerOptions
-        {
-            IndentSize = 2,
-            WriteIndented = true
-        }));
-
-    /*private async Task ArchiveMessage(Message message, FlowStatus flowStatus)
+    private async Task ArchiveMessage(Message message, FlowStatus flowStatus)
     {
         if (flowStatus.Archive.Archived is not null && !string.IsNullOrEmpty(flowStatus.Archive.CaseNumber))
         {
@@ -294,10 +290,12 @@ public class Archive
                 message.Id, flowStatus.Archive.Archived, flowStatus.Archive.CaseNumber);
             return;
         }
-        
+
         flowStatus.Archive.Archived = DateTime.UtcNow;
         flowStatus.Archive.CaseNumber = "whatever";
 
         await UpdateArchiveStatus(message.Id!, flowStatus);
-    }*/
+    }
+    
+    private bool IsKnownSubject(string subject) => _mailKnownSubjects.Contains(subject, StringComparer.OrdinalIgnoreCase);*/
 }
