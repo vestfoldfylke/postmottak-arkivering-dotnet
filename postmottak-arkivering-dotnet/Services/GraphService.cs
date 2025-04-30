@@ -8,6 +8,7 @@ using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
 using Microsoft.Graph.Users.Item.MailFolders.Item.Messages;
+using Microsoft.Graph.Users.Item.Messages.Item.Forward;
 using Microsoft.Graph.Users.Item.Messages.Item.Move;
 using Microsoft.Graph.Users.Item.Messages.Item.Reply;
 using Microsoft.Kiota.Abstractions;
@@ -16,6 +17,7 @@ namespace postmottak_arkivering_dotnet.Services;
 
 public interface IGraphService
 {
+    Task ForwardMailMessage(string userPrincipalName, string messageId, List<string> recipients);
     Task<List<MailFolder>> GetMailFolders(string userPrincipalName);
     Task<List<MailFolder>> GetMailChildFolders(string userPrincipalName, string folderId);
     Task<List<Attachment>> GetMailMessageAttachments(string userPrincipalName, string messageId);
@@ -23,7 +25,7 @@ public interface IGraphService
     Task<Message?> MoveMailMessage(string userPrincipalName, string messageId, string destinationFolderId);
     Task<bool> PatchMailMessage(string userPrincipalName, string messageId, Message message);
     Task<bool> ReplyMailMessage(string userPrincipalName, string messageId,
-        EmailAddress fromAddress, List<EmailAddress> toAddresses, string replyBody, string conversationId, string parentFolderId);
+        string fromAddress, List<string> toAddresses, string replyBody, string conversationId, string parentFolderId);
 }
 
 public class GraphService : IGraphService
@@ -38,6 +40,20 @@ public class GraphService : IGraphService
     {
         _logger = logger;
         _graphClient = authenticationService.CreateGraphClient();
+    }
+    
+    public async Task ForwardMailMessage(string userPrincipalName, string messageId, List<string> recipients)
+    {
+        var toRecipients = GetRecipients(recipients);
+        if (toRecipients is null || toRecipients.Count == 0)
+        {
+            throw new ArgumentException("Recipients cannot be null or empty", nameof(recipients));
+        }
+
+        await _graphClient.Users[userPrincipalName].Messages[messageId].Forward.PostAsync(new ForwardPostRequestBody
+        {
+            ToRecipients = toRecipients
+        }, configuration => configuration.Headers.Add(ImmutableIdHeader, ImmutableIdHeaderValue));
     }
 
     public async Task<List<MailFolder>> GetMailFolders(string userPrincipalName)
@@ -136,7 +152,7 @@ public class GraphService : IGraphService
     }
     
     public async Task<bool> ReplyMailMessage(string userPrincipalName, string messageId,
-        EmailAddress fromAddress, List<EmailAddress> toAddresses, string replyBody, string conversationId, string parentFolderId)
+        string fromAddress, List<string> toAddresses, string replyBody, string conversationId, string parentFolderId)
     {
         var replyRequestBody = new ReplyPostRequestBody
         {
@@ -144,18 +160,13 @@ public class GraphService : IGraphService
             {
                 From = new Recipient
                 {
-                    EmailAddress = fromAddress
+                    EmailAddress = new EmailAddress
+                    {
+                        Address = fromAddress
+                    }
                 },
-                ReplyTo = toAddresses.Select(toAddress => new Recipient{ EmailAddress = new EmailAddress
-                {
-                    Address = toAddress.Address,
-                    Name = toAddress.Name
-                }}).ToList(),
-                ToRecipients = toAddresses.Select(toAddress => new Recipient{ EmailAddress = new EmailAddress
-                {
-                    Address = toAddress.Address,
-                    Name = toAddress.Name
-                }}).ToList(),
+                ReplyTo = GetRecipients(toAddresses),
+                ToRecipients = GetRecipients(toAddresses),
                 ConversationId = conversationId,
                 ParentFolderId = parentFolderId,
                 IsRead = true,
@@ -177,4 +188,13 @@ public class GraphService : IGraphService
             return false;
         }
     }
+
+    private static List<Recipient>? GetRecipients(List<string>? emailAddresses) =>
+        emailAddresses?.Select(toAddress => new Recipient
+        {
+            EmailAddress = new EmailAddress
+            {
+                Address = toAddress
+            }
+        }).ToList();
 }

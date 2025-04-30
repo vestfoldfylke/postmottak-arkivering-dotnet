@@ -16,17 +16,15 @@ public interface IEmailTypeService
 
 public class EmailTypeService : IEmailTypeService
 {
-    private readonly IAiAgentService _aiAgentService;
-    private readonly IArchiveService _archiveService;
+    private readonly IServiceProvider _serviceProvider;
 
     private readonly List<Type> _emailTypes;
     
     private const string EmailTypeNamespace = "postmottak_arkivering_dotnet.Contracts.Email.EmailTypes";
     
-    public EmailTypeService(IAiAgentService aiAgentService, IArchiveService archiveService)
+    public EmailTypeService(IServiceProvider serviceProvider)
     {
-        _aiAgentService = aiAgentService;
-        _archiveService = archiveService;
+        _serviceProvider = serviceProvider;
 
         _emailTypes = Assembly.GetExecutingAssembly().GetTypes()
             .Where(t => typeof(IEmailType).IsAssignableFrom(t) && !t.IsAbstract)
@@ -66,7 +64,7 @@ public class EmailTypeService : IEmailTypeService
     
     private IEmailType CreateEmailTypeInstance(Type emailType)
     {
-        var typeInstance = Activator.CreateInstance(emailType, _aiAgentService, _archiveService);
+        var typeInstance = Activator.CreateInstance(emailType, _serviceProvider);
         if (typeInstance == null)
         {
             throw new InvalidOperationException($"Failed to create instance of type {emailType.Name}");

@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Graph.Models;
 using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
 using postmottak_arkivering_dotnet.Services;
@@ -10,9 +13,10 @@ namespace postmottak_arkivering_dotnet.Contracts.Email.EmailTypes;
 
 public class PengetransportenEmailType : IEmailType
 {
-    private readonly IArchiveService _archiveService;
     private readonly IAiAgentService _aiAgentService;
+    private readonly IGraphService _graphService;
 
+    private readonly string _postmottakUpn;
     private readonly string[] _subjects = [
         "Faktura",
         "Regning",
@@ -62,10 +66,13 @@ public class PengetransportenEmailType : IEmailType
     
     public string Title { get; } = "Pengetransporten";
 
-    public PengetransportenEmailType(IAiAgentService aiAgentService, IArchiveService archiveService)
+    public PengetransportenEmailType(IServiceProvider serviceProvider)
     {
-        _aiAgentService = aiAgentService;
-        _archiveService = archiveService;
+        _aiAgentService = serviceProvider.GetService<IAiAgentService>()!;
+        _graphService = serviceProvider.GetService<IGraphService>()!;
+        
+        var configuration = serviceProvider.GetService<IConfiguration>()!;
+        _postmottakUpn = configuration["Postmottak_UPN"] ?? throw new InvalidOperationException("Postmottak_UPN is not set in configuration");
     }
     
     public async Task<bool> MatchCriteria(Message message)
@@ -108,8 +115,14 @@ public class PengetransportenEmailType : IEmailType
         {
             throw new InvalidOperationException("Result is null. Somethings wrong");
         }
+
+        List<string> toRecipients =
+        [
+            "noreply@vestfoldfylke.no"
+        ];
         
-        // forward it to someone
-        return await Task.FromResult($"Denne e-posten er håndtert av KI og videresendt på begrunnelse: {_result.Description}");
+        await _graphService.ForwardMailMessage(_postmottakUpn, flowStatus.Message.Id!, toRecipients);
+        
+        return await Task.FromResult($"Denne e-posten er håndtert av KI og videresendt til {string.Join(',', toRecipients)} på begrunnelse: {_result.Description}");
     }
 }

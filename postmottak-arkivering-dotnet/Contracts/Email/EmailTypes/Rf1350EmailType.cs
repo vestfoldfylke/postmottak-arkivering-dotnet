@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Graph.Models;
 using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
 using postmottak_arkivering_dotnet.Services;
@@ -30,10 +31,10 @@ public class Rf1350EmailType : IEmailType
     
     public string Title { get; } = "RF 13.50";
 
-    public Rf1350EmailType(IAiAgentService aiAgentService, IArchiveService archiveService)
+    public Rf1350EmailType(IServiceProvider serviceProvider)
     {
-        _aiAgentService = aiAgentService;
-        _archiveService = archiveService;
+        _aiAgentService = serviceProvider.GetService<IAiAgentService>()!;
+        _archiveService = serviceProvider.GetService<IArchiveService>()!;
     }
     
     public async Task<bool> MatchCriteria(Message message)
