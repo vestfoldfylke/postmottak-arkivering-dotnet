@@ -23,7 +23,6 @@ namespace postmottak_arkivering_dotnet.Functions;
 
 public class Archive
 {
-    private readonly IArchiveService _archiveService;
     private readonly IBlobService _blobService;
     private readonly IGraphService _graphService;
     private readonly IAiAgentService _aiAgentService;
@@ -34,47 +33,23 @@ public class Archive
     private readonly string _mailFolderInboxId;
     private readonly string _mailFolderManualHandlingId;
     private readonly string _mailFolderFinishedId;
-    private readonly string[] _mailKnownSubjects;
     private readonly string _postboxUpn;
 
-    private readonly EmailAddress _replyFromAddress;
-    private readonly List<EmailAddress> _replyToAddresses;
-    private readonly string _replyBody;
-
     public Archive(IConfiguration configuration, ILogger<Archive> logger, IGraphService graphService,
-        IArchiveService archiveService, IBlobService blobService, IAiAgentService aiAgentService, IEmailTypeService emailTypeService)
+        IBlobService blobService, IAiAgentService aiAgentService, IEmailTypeService emailTypeService)
     {
         _logger = logger;
         _graphService = graphService;
-        _archiveService = archiveService;
         _blobService = blobService;
         _aiAgentService = aiAgentService;
         _emailTypeService = emailTypeService;
         
         _blobStorageContainerName = configuration["BlobStorageContainerName"] ?? throw new NullReferenceException();
         
-        var knownSubjects = configuration["Postmottak_MailKnownSubjects"] ?? "";
-        
         _mailFolderInboxId = configuration["Postmottak_MailFolder_Inbox_Id"] ?? throw new NullReferenceException();
         _mailFolderManualHandlingId = configuration["Postmottak_MailFolder_ManualHandling_Id"] ?? throw new NullReferenceException();
         _mailFolderFinishedId = configuration["Postmottak_MailFolder_Finished_Id"] ?? throw new NullReferenceException();
-        _mailKnownSubjects = knownSubjects.Split(",");
         _postboxUpn = configuration["Postmottak_UPN"] ?? throw new NullReferenceException();
-        
-        _replyFromAddress = new EmailAddress
-        {
-            Address = _postboxUpn
-        };
-
-        _replyToAddresses =
-        [
-            new EmailAddress
-            {
-                Address = configuration["Postmottak_ReplyToAddress"] ?? throw new NullReferenceException(),
-            }
-        ];
-        
-        _replyBody = configuration["Postmottak_ReplyBody"] ?? throw new NullReferenceException();
     }
 
     [Function("ArchiveEmails")]
@@ -140,10 +115,6 @@ public class Archive
         await HandleUnknownMessages(unknownMessages);
         
         await HandleKnownMessageTypes(messagesToHandle);
-        
-        /*List<Message> unhandledMessages = await HandleKnownSubjects(mailMessages);
-
-        await HandleUnknownMessages(unhandledMessages);*/
         
         return new OkResult();
     }
@@ -213,7 +184,7 @@ public class Archive
                 flowStatus.ErrorStack = ex.StackTrace;
                 flowStatus.RetryAfter = DateTime.UtcNow.AddSeconds(5); // TODO: Change this to a more appropriate value
 
-                await UpdateArchiveStatus(flowStatus.Message.Id!, flowStatus);
+                await UpsertFlowStatusBlob(flowStatus.Message.Id!, flowStatus);
             }
         }
     }
@@ -235,75 +206,10 @@ public class Archive
         }
     }
     
-    private Task UpdateArchiveStatus(string messageId, FlowStatus flowStatus) =>
+    private Task UpsertFlowStatusBlob(string messageId, FlowStatus flowStatus) =>
         _blobService.UploadBlob(_blobStorageContainerName, $"{messageId}-flowstatus.json", JsonSerializer.Serialize(flowStatus, new JsonSerializerOptions
         {
             IndentSize = 2,
             WriteIndented = true
         }));
-    
-    /*private async Task<List<Message>> HandleKnownSubjects(List<Message> messages)
-    {
-        var unhandledMessages = new List<Message>();
-
-        foreach (var message in messages)
-        {
-            if (string.IsNullOrEmpty(message.Id))
-            {
-                _logger.LogWarning("Message is missing required property Id and will be ignored. Message: {@Message}", message);
-                continue;
-            }
-            
-            if (string.IsNullOrEmpty(message.Subject))
-            {
-                _logger.LogWarning("MessageId {MessageId} is missing required property Subject and will not be handled. Subject: {Subject}", message.Id, message.Subject);
-                unhandledMessages.Add(message);
-                continue;
-            }
-            
-            if (!IsKnownSubject(message.Subject))
-            {
-                unhandledMessages.Add(message);
-                continue;
-            }
-            
-            FlowStatus flowStatus = await _blobService.DownloadBlobContent<FlowStatus?>(_blobStorageContainerName, $"{message.Id}-flowstatus.json") ?? new FlowStatus();
-            
-            await ArchiveMessage(message, flowStatus);
-            
-            Message? postMoveMessage =
-                await _graphService.MoveMailMessage(_postboxUpn, message.Id!, _mailFolderFinishedId);
-            if (postMoveMessage is null)
-            {
-                unhandledMessages.Add(message);
-                continue;
-            }
-            
-            await _blobService.RemoveBlobs(_blobStorageContainerName, message.Id);
-            
-            await _graphService.ReplyMailMessage(_postboxUpn, postMoveMessage.Id!, _replyFromAddress, _replyToAddresses,
-                _replyBody, postMoveMessage.ConversationId!, _mailFolderFinishedId);
-            
-            _logger.LogInformation("MessageId {MessageId} automatically handled and successfully moved to finished folder", message.Id);
-        }
-
-        return unhandledMessages;
-    }
-    
-    private async Task ArchiveMessage(Message message, FlowStatus flowStatus)
-    {
-        if (flowStatus.Archive.Archived is not null && !string.IsNullOrEmpty(flowStatus.Archive.CaseNumber))
-        {
-            _logger.LogInformation("MessageId {MessageId} has already been archived at {@ArchiveDateTime} with CaseNumber {CaseNumber}",
-                message.Id, flowStatus.Archive.Archived, flowStatus.Archive.CaseNumber);
-            return;
-        }
-
-        flowStatus.Archive.Archived = DateTime.UtcNow;
-        flowStatus.Archive.CaseNumber = "whatever";
-
-        await UpdateArchiveStatus(message.Id!, flowStatus);
-    }
-    
-    private bool IsKnownSubject(string subject) => _mailKnownSubjects.Contains(subject, StringComparer.OrdinalIgnoreCase);*/
 }

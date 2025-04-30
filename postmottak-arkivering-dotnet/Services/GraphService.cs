@@ -80,11 +80,11 @@ public class GraphService : IGraphService
     public async Task<List<Message>> GetMailMessages(string userPrincipalName, string folderId, string[]? expandedProperties = null)
     {
         /*using AzureEventSourceListener listener = AzureEventSourceListener.CreateConsoleLogger();*/
-        Action<RequestConfiguration<MessagesRequestBuilder.MessagesRequestBuilderGetQueryParameters>>? options = config =>
+        Action<RequestConfiguration<MessagesRequestBuilder.MessagesRequestBuilderGetQueryParameters>> options = config =>
         {
-            config.QueryParameters.Expand = expandedProperties;
             config.Headers.Add(ImmutableIdHeader, ImmutableIdHeaderValue);
-            config.QueryParameters.Orderby = new[] { "receivedDateTime desc" };
+            config.QueryParameters.Expand = expandedProperties;
+            config.QueryParameters.Orderby = ["receivedDateTime desc"];
         };
         
         var mailMessages = await _graphClient.Users[userPrincipalName].MailFolders[folderId].Messages.GetAsync(options);

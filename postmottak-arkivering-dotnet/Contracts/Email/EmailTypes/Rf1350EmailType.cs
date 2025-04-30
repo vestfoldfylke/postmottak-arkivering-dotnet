@@ -57,7 +57,7 @@ public class Rf1350EmailType : IEmailType
         }
         
         var (_, result) = await _aiAgentService.Rf1350(message.Body!.Content!);
-        if (string.IsNullOrEmpty(result?.Type) || string.IsNullOrEmpty(result?.ReferenceNumber))
+        if (string.IsNullOrEmpty(result?.Type) || string.IsNullOrEmpty(result.ReferenceNumber))
         {
             return false;
         }
@@ -180,7 +180,7 @@ public class Rf1350EmailType : IEmailType
                 throw new InvalidOperationException("No cases found");
             }
 
-            var caseNumber = cases.FirstOrDefault()?.AsObject()?["CaseNumber"]?.ToString();
+            var caseNumber = cases.FirstOrDefault()?.AsObject()["CaseNumber"]?.ToString();
 
             flowStatus.Archive.CaseNumber = caseNumber;
         }
@@ -202,7 +202,7 @@ public class Rf1350EmailType : IEmailType
                 throw new InvalidOperationException("No cases found");
             }
 
-            var caseNumber = cases.FirstOrDefault()?.AsObject()?["CaseNumber"]?.ToString();
+            var caseNumber = cases.FirstOrDefault()?.AsObject()["CaseNumber"]?.ToString();
 
             flowStatus.Archive.CaseNumber = caseNumber;
         }

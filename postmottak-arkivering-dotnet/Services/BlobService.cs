@@ -9,7 +9,6 @@ using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 
 namespace postmottak_arkivering_dotnet.Services;
 
@@ -26,12 +25,10 @@ public interface IBlobService
 public class BlobService : IBlobService
 {
     private readonly BlobServiceClient _blobServiceClient;
-    private readonly ILogger<BlobService> _logger;
     
-    public BlobService(IConfiguration config, ILogger<BlobService> logger)
+    public BlobService(IConfiguration config)
     {
         _blobServiceClient = new BlobServiceClient(config["BlobStorageConnectionString"] ?? throw new NullReferenceException());
-        _logger = logger;
     }
     
     public Task<string?> DownloadBlobContentAsString(string containerName, string blobName, CancellationToken? stoppingToken = null)
