@@ -17,6 +17,7 @@ namespace postmottak_arkivering_dotnet.Services;
 
 public interface IAiAgentService
 {
+    Task<(ChatHistory, PengetransportenChatResult?)> Pengetransporten(string prompt, ChatHistory? chatHistory = null);
     Task<(ChatHistory, Rf1350ChatResult?)> Rf1350(string prompt, ChatHistory? chatHistory = null);
 }
 
@@ -26,9 +27,13 @@ public class AiAgentService : IAiAgentService
 
     private readonly Kernel _kernel;
     private readonly Dictionary<string, ChatCompletionAgent> _agents = new();
-
-    private readonly Type _rf1350ResponseFormat;
     
+    #region AgentNames
+    private const string Rf1350AgentName = "RF1350";
+    private const string PengetransportenAgentName = "Pengetransporten";
+    #endregion
+    
+    #region Instructions
     private const string Rf1350Instructions = """
                                                Du er en arkiveringsekspert. Du har stålkontroll på arkivering av dokumenter og e-poster.
                                                                             Svarene skal alltid være i JSON format,
@@ -41,7 +46,26 @@ public class AiAgentService : IAiAgentService
                                                                             Et referansenummer ser slikt ut: 0000-0000.
                                                                             Et prosjektnummer ser slik ut: 00-0000.
                                                """;
-    private const string Rf1350AgentName = "RF1350";
+    
+    private const string PengetransportenInstructions = """
+                                                        Du sier om en epost er enten:
+                                                        - Faktura
+                                                        - Spørsmål om faktura
+                                                        - Regning
+                                                        - Inkassovarsel
+                                                        - Purring på faktura eller regning
+                                                        - Spørsmål om betalinger i fylkeskommunen.
+                                                        
+                                                        Du skal være minst 90% sikker på at det er en av kategoriene nevnt over før du setter invoiceProperty = true.
+                                                        
+                                                        Du svarer alltid i json format. Det skal også ALLTID inneholde en property hvor det er en ny Chuck Norris vits
+                                                        """;
+    #endregion
+    
+    #region ResponseFormats
+    private readonly Type _pengetransportenResponseFormat = typeof(PengetransportenChatResult);
+    private readonly Type _rf1350ResponseFormat = typeof(Rf1350ChatResult);
+    #endregion
 
     public AiAgentService(IConfiguration config, ILogger<AiAgentService> logger)
     {
@@ -69,8 +93,27 @@ public class AiAgentService : IAiAgentService
         });
         
         _kernel = kernelBuilder.Build();
+    }
+    
+    public async Task<(ChatHistory, PengetransportenChatResult?)> Pengetransporten(string prompt, ChatHistory? chatHistory = null)
+    {
+        _logger.LogInformation("{AgentName} question: {Prompt}", PengetransportenAgentName, prompt);
         
-        _rf1350ResponseFormat = typeof(Rf1350ChatResult);
+        var history = chatHistory ?? [];
+
+        AgentThread agentThread = new ChatHistoryAgentThread(history);
+        
+        var agent = GetOrCreateChatCompletionAgent(PengetransportenAgentName, _pengetransportenResponseFormat, PengetransportenInstructions);
+
+        await foreach (ChatMessageContent response in agent.InvokeAsync(new ChatMessageContent(AuthorRole.User, prompt),
+                           agentThread))
+        {
+            var resultContent = response.Content ?? string.Empty;
+           
+            _logger.LogInformation("{AgentName} answer: {Result}", PengetransportenAgentName, resultContent);
+        }
+        
+        return (history, AiHelper.GetLatestAnswer<PengetransportenChatResult>(history));
     }
     
     public async Task<(ChatHistory, Rf1350ChatResult?)> Rf1350(string prompt, ChatHistory? chatHistory = null)
