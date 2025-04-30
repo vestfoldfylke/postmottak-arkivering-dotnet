@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using postmottak_arkivering_dotnet.Contracts.Ai;
 using postmottak_arkivering_dotnet.Utils;
@@ -40,17 +41,25 @@ public class AiAgentService : IAiAgentService
                                                                             Et referansenummer ser slikt ut: 0000-0000.
                                                                             Et prosjektnummer ser slik ut: 00-0000.
                                                """;
-    private const string Rf1350AgentName = "RF13.50";
+    private const string Rf1350AgentName = "RF1350";
 
     public AiAgentService(IConfiguration config, ILogger<AiAgentService> logger)
     {
         _logger = logger;
 
-        var modelId = config["OpenAI_Model_Id"] ?? throw new NullReferenceException("OpenAI_Model_Id missing in configuration");
-        var openAiKey = config["OpenAI_API_Key"] ?? throw new NullReferenceException("OpenAI_API_Key missing in configuration");
+        // var modelId = config["OpenAI_Model_Id"] ?? throw new NullReferenceException("OpenAI_Model_Id missing in configuration");
+        // var openAiKey = config["OpenAI_API_Key"] ?? throw new NullReferenceException("OpenAI_API_Key missing in configuration");
+        var azureOpenAiModelName = config["AzureOpenAI_Model_Name"] ?? throw new NullReferenceException("AzureOpenAI_Model_Name missing in configuration");
+        var azureOpenAiKey = config["AzureOpenAI_API_Key"] ?? throw new NullReferenceException("AzureOpenAI_API_Key missing in configuration");
+        var azureOpenAiEndpoint = config["AzureOpenAI_Endpoint"] ?? throw new NullReferenceException("AzureOpenAI_Endpoint missing in configuration");
         
+        /* For OpenAI 
         var kernelBuilder = Kernel.CreateBuilder()
             .AddOpenAIChatCompletion(modelId, openAiKey);
+        */
+
+        var kernelBuilder = Kernel.CreateBuilder()
+            .AddAzureOpenAIChatCompletion(azureOpenAiModelName, azureOpenAiEndpoint, azureOpenAiKey);
 
         kernelBuilder.Services.AddLogging(configure =>
         {
@@ -92,12 +101,21 @@ public class AiAgentService : IAiAgentService
             _logger.LogInformation("Agent {AgentName} already exists with ExecutionSettings: {ExecutionSettings}", agentName, agent.Arguments.ExecutionSettings);
             return agent;
         }
-        
+
+        /*        
         var openAiPromptExecutionSettings = new OpenAIPromptExecutionSettings
         {
             FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(),
             Store = false,
             ResponseFormat = responseFormat
+        };
+        */
+
+        var azureOpenAiPromptExecutionSettings = new AzureOpenAIPromptExecutionSettings
+        {
+            FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(),
+            Store = false,
+            ResponseFormat = responseFormat,
         };
         
         agent = new ChatCompletionAgent
@@ -105,7 +123,7 @@ public class AiAgentService : IAiAgentService
             Name = agentName,
             Instructions = instructions,
             Kernel = _kernel,
-            Arguments = new KernelArguments(openAiPromptExecutionSettings)
+            Arguments = new KernelArguments(azureOpenAiPromptExecutionSettings)
         };
         
         _logger.LogInformation("Agent {AgentName} created with ExecutionSettings: {ExecutionSettings}", agentName, agent.Arguments.ExecutionSettings);
