@@ -8,12 +8,13 @@ using Microsoft.Graph.Models;
 using postmottak_arkivering_dotnet.Contracts.Ai;
 using postmottak_arkivering_dotnet.Services;
 
-namespace postmottak_arkivering_dotnet.Contracts.Email;
+namespace postmottak_arkivering_dotnet.Contracts.Email.EmailTypes;
 
 public class Rf1350EmailType : IEmailType
 {
-    public string Title { get; } = "RF 13.50";
-
+    private readonly IArchiveService _archiveService;
+    private readonly IAiAgentService _aiAgentService;
+    
     private const string FromAddress = "ikkesvar@regionalforvaltning.no";
 
     private readonly string[] _subjects = [
@@ -27,7 +28,15 @@ public class Rf1350EmailType : IEmailType
 
     private Rf1350ChatResult? _result;
     
-    public async Task<bool> MatchCriteria(Message message, IAiAgentService aiAgentService)
+    public string Title { get; } = "RF 13.50";
+
+    public Rf1350EmailType(IAiAgentService aiAgentService, IArchiveService archiveService)
+    {
+        _aiAgentService = aiAgentService;
+        _archiveService = archiveService;
+    }
+    
+    public async Task<bool> MatchCriteria(Message message)
     {
         await Task.CompletedTask;
         
@@ -47,7 +56,7 @@ public class Rf1350EmailType : IEmailType
             return false;
         }
         
-        var (_, result) = await aiAgentService.Rf1350(message.Body!.Content!);
+        var (_, result) = await _aiAgentService.Rf1350(message.Body!.Content!);
         if (string.IsNullOrEmpty(result?.Type) || string.IsNullOrEmpty(result?.ReferenceNumber))
         {
             return false;
@@ -68,7 +77,7 @@ public class Rf1350EmailType : IEmailType
         return true;
     }
 
-    public async Task<string> HandleMessage(FlowStatus flowStatus, IArchiveService archiveService, IAiAgentService aiAgentService)
+    public async Task<string> HandleMessage(FlowStatus flowStatus)
     {
         if (flowStatus.Result is null)
         {
@@ -86,21 +95,21 @@ public class Rf1350EmailType : IEmailType
 
         if (_result.Type.Equals(OverføringAvMottattSøknad, StringComparison.OrdinalIgnoreCase))
         {
-            return await HandleOverføringAvMottattSøknad(flowStatus, archiveService);
+            return await HandleOverføringAvMottattSøknad(flowStatus);
         }
         if (string.Equals(_result.Type, AutomatiskKvitteringPåInnsendtSøknad, StringComparison.OrdinalIgnoreCase))
         {
-            return await HandleAutomatiskKvitteringPåInnsendtSøknad(flowStatus, archiveService);
+            return await HandleAutomatiskKvitteringPåInnsendtSøknad(flowStatus);
         }
         if (string.Equals(_result.Type, AnmodningOmSluttutbetaling, StringComparison.OrdinalIgnoreCase))
         {
-            return await HandleAnmodningOmSluttutbetaling(flowStatus, archiveService);
+            return await HandleAnmodningOmSluttutbetaling(flowStatus);
         }
         
         throw new InvalidOperationException($"Unknown RF13.50 type {_result.Type}");
     }
     
-    private async Task<string> HandleOverføringAvMottattSøknad(FlowStatus flowStatus, IArchiveService archiveService)
+    private async Task<string> HandleOverføringAvMottattSøknad(FlowStatus flowStatus)
     {
         if (string.IsNullOrEmpty(_result!.ProjectOwner))
         {
@@ -114,7 +123,7 @@ public class Rf1350EmailType : IEmailType
         
         if (string.IsNullOrEmpty(flowStatus.Archive.CaseNumber))
         {
-            var projects = await archiveService.GetProjects(new
+            var projects = await _archiveService.GetProjects(new
             {
                 _result!.ProjectNumber
             });
@@ -126,7 +135,7 @@ public class Rf1350EmailType : IEmailType
                 throw new InvalidOperationException($"No projects found for the given project number {_result.ProjectNumber}");
             }
             
-            var cases = await archiveService.GetCases(new
+            var cases = await _archiveService.GetCases(new
             {
                 _result!.ProjectNumber,
                 Title = $"RF13.50%{_result!.ReferenceNumber}%"
@@ -142,7 +151,7 @@ public class Rf1350EmailType : IEmailType
                     throw new MissingFieldException($"Responsible person email is missing from ProjectNumber {_result.ProjectNumber}");
                 }
                 
-                activeCase = await archiveService.CreateCase(new
+                activeCase = await _archiveService.CreateCase(new
                 {
                     Project = _result!.ProjectNumber,
                     ResponsiblePersonEmail = responsiblePersonEmail,
@@ -157,11 +166,11 @@ public class Rf1350EmailType : IEmailType
         return "Arkivert og greier";
     }
     
-    private async Task<string> HandleAutomatiskKvitteringPåInnsendtSøknad(FlowStatus flowStatus, IArchiveService archiveService)
+    private async Task<string> HandleAutomatiskKvitteringPåInnsendtSøknad(FlowStatus flowStatus)
     {
         if (string.IsNullOrEmpty(flowStatus.Archive.CaseNumber))
         {
-            var cases = await archiveService.GetCases(new
+            var cases = await _archiveService.GetCases(new
             {
                 caseNumber = flowStatus.Message.Subject
             });
@@ -179,11 +188,11 @@ public class Rf1350EmailType : IEmailType
         return "Arkivert og greier";
     }
     
-    private async Task<string> HandleAnmodningOmSluttutbetaling(FlowStatus flowStatus, IArchiveService archiveService)
+    private async Task<string> HandleAnmodningOmSluttutbetaling(FlowStatus flowStatus)
     {
         if (string.IsNullOrEmpty(flowStatus.Archive.CaseNumber))
         {
-            var cases = await archiveService.GetCases(new
+            var cases = await _archiveService.GetCases(new
             {
                 caseNumber = flowStatus.Message.Subject
             });

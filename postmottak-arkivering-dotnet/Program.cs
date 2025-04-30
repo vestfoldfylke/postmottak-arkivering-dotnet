@@ -13,6 +13,7 @@ builder.UseMiddleware<ErrorHandlingMiddleware>();
 
 builder.Logging.AddVfkLogging();
 
+builder.Services.AddSingleton<IEmailTypeService, EmailTypeService>();
 builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();
 builder.Services.AddSingleton<IAiAgentService, AiAgentService>();
 builder.Services.AddSingleton<IGraphService, GraphService>();

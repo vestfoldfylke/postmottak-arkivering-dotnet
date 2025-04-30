@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -29,6 +28,7 @@ public class Archive
     private readonly IGraphService _graphService;
     private readonly IAiAgentService _aiAgentService;
     private readonly ILogger<Archive> _logger;
+    private readonly IEmailTypeService _emailTypeService;
 
     private readonly string _blobStorageContainerName;
     private readonly string _mailFolderInboxId;
@@ -42,13 +42,14 @@ public class Archive
     private readonly string _replyBody;
 
     public Archive(IConfiguration configuration, ILogger<Archive> logger, IGraphService graphService,
-        IArchiveService archiveService, IBlobService blobService, IAiAgentService aiAgentService)
+        IArchiveService archiveService, IBlobService blobService, IAiAgentService aiAgentService, IEmailTypeService emailTypeService)
     {
         _logger = logger;
         _graphService = graphService;
         _archiveService = archiveService;
         _blobService = blobService;
         _aiAgentService = aiAgentService;
+        _emailTypeService = emailTypeService;
         
         _blobStorageContainerName = configuration["BlobStorageContainerName"] ?? throw new NullReferenceException();
         
@@ -115,26 +116,14 @@ public class Archive
                      _logger.LogInformation("MessageId {MessageId} has retry after {RetryAfter} and will not be handled now", message.Id, flowStatus.RetryAfter);
                      continue;
                 }
-
-                Type? type = Type.GetType($"postmottak_arkivering_dotnet.Contracts.Email.{flowStatus.Type}");
-                if (type is null)
-                {
-                     _logger.LogError("Type {Type} not found for MessageId {MessageId}", flowStatus.Type, message.Id);
-                     continue;
-                }
                 
-                IEmailType? existingEmailType = Activator.CreateInstance(type) as IEmailType;
-                if (existingEmailType is null)
-                {
-                     _logger.LogError("Failed to create instance of IEmailType for Type {Type}", flowStatus.Type);
-                     continue;
-                }
+                IEmailType existingEmailType = _emailTypeService.CreateEmailTypeInstance(flowStatus.Type);
 
                 messagesToHandle.Add((existingEmailType, flowStatus));
                 continue;
             }
             
-            IEmailType? emailType = await EmailType.GetEmailType(message, _aiAgentService);
+            IEmailType? emailType = await _emailTypeService.GetEmailType(message);
             if (emailType is null)
             {
                 unknownMessages.Add(message);
@@ -196,7 +185,7 @@ public class Archive
         {
             try
             {
-                var handledMessage = await emailType.HandleMessage(flowStatus, _archiveService, _aiAgentService);
+                var handledMessage = await emailType.HandleMessage(flowStatus);
                 
                 // update body to reflect that its handled
                 Message message = new Message
