@@ -8,8 +8,8 @@ using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
-using Microsoft.SemanticKernel.Connectors.OpenAI;
-using postmottak_arkivering_dotnet.Contracts.Ai;
+//using Microsoft.SemanticKernel.Connectors.OpenAI;
+using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
 using postmottak_arkivering_dotnet.Utils;
 using ChatMessageContent = Microsoft.SemanticKernel.ChatMessageContent;
 

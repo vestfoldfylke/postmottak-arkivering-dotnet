@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace postmottak_arkivering_dotnet.Contracts.Ai;
+namespace postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
 
 public class Rf1350ChatResult
 {

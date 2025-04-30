@@ -5,7 +5,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Graph.Models;
-using postmottak_arkivering_dotnet.Contracts.Ai;
+using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
 using postmottak_arkivering_dotnet.Services;
 
 namespace postmottak_arkivering_dotnet.Contracts.Email.EmailTypes;
