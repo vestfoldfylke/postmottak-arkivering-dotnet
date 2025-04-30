@@ -29,7 +29,7 @@ public partial class Rf1350EmailType : IEmailType
 
     private Rf1350ChatResult? _result;
     
-    public string Title { get; } = "RF 13.50";
+    public string Title { get; } = "RF13.50";
 
     public Rf1350EmailType(IServiceProvider serviceProvider)
     {
