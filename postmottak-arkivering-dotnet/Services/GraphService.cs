@@ -84,6 +84,7 @@ public class GraphService : IGraphService
         {
             config.QueryParameters.Expand = expandedProperties;
             config.Headers.Add(ImmutableIdHeader, ImmutableIdHeaderValue);
+            config.QueryParameters.Orderby = new[] { "receivedDateTime desc" };
         };
         
         var mailMessages = await _graphClient.Users[userPrincipalName].MailFolders[folderId].Messages.GetAsync(options);
