@@ -97,42 +97,24 @@ public class AiAgentService : IAiAgentService
     
     public async Task<(ChatHistory, PengetransportenChatResult?)> Pengetransporten(string prompt, ChatHistory? chatHistory = null)
     {
-        _logger.LogInformation("{AgentName} question: {Prompt}", PengetransportenAgentName, prompt);
-        
-        var history = chatHistory ?? [];
-
-        AgentThread agentThread = new ChatHistoryAgentThread(history);
-        
-        var agent = GetOrCreateChatCompletionAgent(PengetransportenAgentName, _pengetransportenResponseFormat, PengetransportenInstructions);
-
-        await foreach (ChatMessageContent response in agent.InvokeAsync(new ChatMessageContent(AuthorRole.User, prompt),
-                           agentThread))
-        {
-            var resultContent = response.Content ?? string.Empty;
-           
-            _logger.LogInformation("{AgentName} answer: {Result}", PengetransportenAgentName, resultContent);
-        }
+        var history = await InvokeAgent(
+            prompt,
+            PengetransportenAgentName,
+            _pengetransportenResponseFormat,
+            PengetransportenInstructions,
+            chatHistory);
         
         return (history, AiHelper.GetLatestAnswer<PengetransportenChatResult>(history));
     }
     
     public async Task<(ChatHistory, Rf1350ChatResult?)> Rf1350(string prompt, ChatHistory? chatHistory = null)
     {
-        _logger.LogInformation("{AgentName} question: {Prompt}", Rf1350AgentName, prompt);
-        
-        var history = chatHistory ?? [];
-
-        AgentThread agentThread = new ChatHistoryAgentThread(history);
-        
-        var agent = GetOrCreateChatCompletionAgent(Rf1350AgentName, _rf1350ResponseFormat, Rf1350Instructions);
-
-        await foreach (ChatMessageContent response in agent.InvokeAsync(new ChatMessageContent(AuthorRole.User, prompt),
-                           agentThread))
-        {
-            var resultContent = response.Content ?? string.Empty;
-           
-            _logger.LogInformation("{AgentName} answer: {Result}", Rf1350AgentName, resultContent);
-        }
+        var history = await InvokeAgent(
+            prompt,
+            Rf1350AgentName,
+            _rf1350ResponseFormat,
+            Rf1350Instructions,
+            chatHistory);
         
         return (history, AiHelper.GetLatestAnswer<Rf1350ChatResult>(history));
     }
@@ -141,20 +123,18 @@ public class AiAgentService : IAiAgentService
     {
         if (_agents.TryGetValue(agentName, out var agent))
         {
-            _logger.LogInformation("Agent {AgentName} already exists with ExecutionSettings: {ExecutionSettings}", agentName, agent.Arguments.ExecutionSettings);
+            _logger.LogInformation("Using already existing agent {AgentName}", agentName);
             return agent;
         }
 
-        /*        
-        var openAiPromptExecutionSettings = new OpenAIPromptExecutionSettings
+        /*var promptExecutionSettings = new OpenAIPromptExecutionSettings
         {
             FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(),
             Store = false,
             ResponseFormat = responseFormat
-        };
-        */
+        };*/
 
-        var azureOpenAiPromptExecutionSettings = new AzureOpenAIPromptExecutionSettings
+        var promptExecutionSettings = new AzureOpenAIPromptExecutionSettings
         {
             FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(),
             Store = false,
@@ -166,13 +146,35 @@ public class AiAgentService : IAiAgentService
             Name = agentName,
             Instructions = instructions,
             Kernel = _kernel,
-            Arguments = new KernelArguments(azureOpenAiPromptExecutionSettings)
+            Arguments = new KernelArguments(promptExecutionSettings)
         };
         
-        _logger.LogInformation("Agent {AgentName} created with ExecutionSettings: {ExecutionSettings}", agentName, agent.Arguments.ExecutionSettings);
+        _logger.LogInformation("Agent {AgentName} created with ExecutionSettings: {@ExecutionSettings}", agentName, promptExecutionSettings);
         
         _agents[agentName] = agent;
 
         return agent;
+    }
+
+    private async Task<ChatHistory> InvokeAgent(string prompt, string agentName, Type responseFormat, string instructions,
+        ChatHistory? chatHistory)
+    {
+        _logger.LogInformation("{AgentName} question: {Prompt}", agentName, prompt);
+        
+        var history = chatHistory ?? [];
+
+        AgentThread agentThread = new ChatHistoryAgentThread(history);
+        
+        var agent = GetOrCreateChatCompletionAgent(agentName, responseFormat, instructions);
+
+        await foreach (ChatMessageContent response in agent.InvokeAsync(new ChatMessageContent(AuthorRole.User, prompt),
+                           agentThread))
+        {
+            var resultContent = response.Content ?? string.Empty;
+           
+            _logger.LogInformation("{AgentName} answer: {Result}", agentName, resultContent);
+        }
+        
+        return history;
     }
 }
