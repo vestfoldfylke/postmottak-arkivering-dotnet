@@ -172,9 +172,8 @@ public class Archive
                     },
                 };
 
-                await _graphService.PatchMessage(_postboxUpn, flowStatus.Message.Id!, message);
-
-                // move message to finished folder
+                await _graphService.PatchMailMessage(_postboxUpn, flowStatus.Message.Id!, message);
+                
                 await _graphService.MoveMailMessage(_postboxUpn, flowStatus.Message.Id!, _mailFolderFinishedId);
             }
             catch (Exception ex)

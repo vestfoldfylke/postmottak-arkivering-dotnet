@@ -21,7 +21,7 @@ public interface IGraphService
     Task<List<Attachment>> GetMailMessageAttachments(string userPrincipalName, string messageId);
     Task<List<Message>> GetMailMessages(string userPrincipalName, string folderId, string[]? expandedProperties = null);
     Task<Message?> MoveMailMessage(string userPrincipalName, string messageId, string destinationFolderId);
-    Task<bool> PatchMessage(string userPrincipalName, string messageId, Message message);
+    Task<bool> PatchMailMessage(string userPrincipalName, string messageId, Message message);
     Task<bool> ReplyMailMessage(string userPrincipalName, string messageId,
         EmailAddress fromAddress, List<EmailAddress> toAddresses, string replyBody, string conversationId, string parentFolderId);
 }
@@ -119,7 +119,7 @@ public class GraphService : IGraphService
         }
     }
     
-    public async Task<bool> PatchMessage(string userPrincipalName, string messageId, Message message)
+    public async Task<bool> PatchMailMessage(string userPrincipalName, string messageId, Message message)
     {
         try
         {
