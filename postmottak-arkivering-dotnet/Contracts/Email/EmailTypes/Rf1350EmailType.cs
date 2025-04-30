@@ -11,7 +11,7 @@ using postmottak_arkivering_dotnet.Services;
 
 namespace postmottak_arkivering_dotnet.Contracts.Email.EmailTypes;
 
-public class Rf1350EmailType : IEmailType
+public partial class Rf1350EmailType : IEmailType
 {
     private readonly IArchiveService _archiveService;
     private readonly IAiAgentService _aiAgentService;
@@ -24,8 +24,8 @@ public class Rf1350EmailType : IEmailType
     ];
     
     private const string AnmodningOmSluttutbetaling = "Anmodning om Sluttutbetaling";
-    private const string AutomatiskKvitteringPåInnsendtSøknad = "Automatisk kvittering på innsendt søknad";
-    private const string OverføringAvMottattSøknad = "Overføring av mottatt søknad!";
+    private const string AutomatiskKvitteringPaInnsendtSoknad = "Automatisk kvittering på innsendt søknad";
+    private const string OverforingAvMottattSoknad = "Overføring av mottatt søknad!";
 
     private Rf1350ChatResult? _result;
     
@@ -63,12 +63,12 @@ public class Rf1350EmailType : IEmailType
             return false;
         }
         
-        if (!string.IsNullOrEmpty(result.ProjectNumber) && !Regex.IsMatch(result.ProjectNumber, @"^(\d{2})-(\d{1,6})$"))
+        if (!string.IsNullOrEmpty(result.ProjectNumber) && !RegexProjectNumber().IsMatch(result.ProjectNumber))
         {
             return false;
         }
         
-        if (!string.IsNullOrEmpty(result.ReferenceNumber) && !Regex.IsMatch(result.ReferenceNumber, @"^(\d{4})-(\d{4})$"))
+        if (!string.IsNullOrEmpty(result.ReferenceNumber) && !RegexReferenceNumber().IsMatch(result.ReferenceNumber))
         {
             return false;
         }
@@ -94,23 +94,23 @@ public class Rf1350EmailType : IEmailType
             throw new InvalidOperationException("Result is null. Somethings wrong");
         }
 
-        if (_result.Type.Equals(OverføringAvMottattSøknad, StringComparison.OrdinalIgnoreCase))
+        if (_result.Type.Equals(OverforingAvMottattSoknad, StringComparison.OrdinalIgnoreCase))
         {
-            return await HandleOverføringAvMottattSøknad(flowStatus);
+            return await HandleOverforingAvMottattSoknad(flowStatus);
         }
-        if (string.Equals(_result.Type, AutomatiskKvitteringPåInnsendtSøknad, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(_result.Type, AutomatiskKvitteringPaInnsendtSoknad, StringComparison.OrdinalIgnoreCase))
         {
-            return await HandleAutomatiskKvitteringPåInnsendtSøknad(flowStatus);
+            return await HandleAutomatiskKvitteringPaInnsendtSoknad(flowStatus);
         }
         if (string.Equals(_result.Type, AnmodningOmSluttutbetaling, StringComparison.OrdinalIgnoreCase))
         {
             return await HandleAnmodningOmSluttutbetaling(flowStatus);
         }
         
-        throw new InvalidOperationException($"Unknown RF13.50 type {_result.Type}");
+        throw new InvalidOperationException($"Unknown {Title} type {_result.Type}");
     }
     
-    private async Task<string> HandleOverføringAvMottattSøknad(FlowStatus flowStatus)
+    private async Task<string> HandleOverforingAvMottattSoknad(FlowStatus flowStatus)
     {
         if (string.IsNullOrEmpty(_result!.ProjectOwner))
         {
@@ -167,7 +167,7 @@ public class Rf1350EmailType : IEmailType
         return "Arkivert og greier";
     }
     
-    private async Task<string> HandleAutomatiskKvitteringPåInnsendtSøknad(FlowStatus flowStatus)
+    private async Task<string> HandleAutomatiskKvitteringPaInnsendtSoknad(FlowStatus flowStatus)
     {
         if (string.IsNullOrEmpty(flowStatus.Archive.CaseNumber))
         {
@@ -210,4 +210,10 @@ public class Rf1350EmailType : IEmailType
         
         return "Arkivert og greier";
     }
+
+    [GeneratedRegex(@"^(\d{2})-(\d{1,6})$")]
+    private static partial Regex RegexProjectNumber();
+    
+    [GeneratedRegex(@"^(\d{4})-(\d{4})$")]
+    private static partial Regex RegexReferenceNumber();
 }
