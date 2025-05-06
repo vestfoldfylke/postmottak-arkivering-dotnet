@@ -6,7 +6,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
 using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
 using postmottak_arkivering_dotnet.Plugins.Ai;
 using postmottak_arkivering_dotnet.Utils;
@@ -20,8 +19,6 @@ public interface IAiPluginTestService
 
 public class AiPluginTestService : IAiPluginTestService
 {
-    private readonly ILogger<AiPluginTestService> _logger;
-    
     private readonly ChatCompletionAgent _agent;
     
     private readonly Type _agentResponseFormat = typeof(PluginTestChatResult);
@@ -29,10 +26,8 @@ public class AiPluginTestService : IAiPluginTestService
     private const string AgentName = "PluginTestAgent";
     private const string AgentInstructions = "Du er så snill! Alt er blomster og bier og bare velstand! Du skal alltid gi tilbake resultatet i JSON format";
 
-    public AiPluginTestService(IConfiguration config, ILogger<AiPluginTestService> logger, IArchiveService archiveService, IAuthenticationService authService)
+    public AiPluginTestService(IConfiguration config, IArchiveService archiveService, IAuthenticationService authService)
     {
-        _logger = logger;
-
         // get a new kernel builder
         IKernelBuilder kernelBuilder = AiHelper.CreateNewKernelBuilder(AgentLogLevel);
         

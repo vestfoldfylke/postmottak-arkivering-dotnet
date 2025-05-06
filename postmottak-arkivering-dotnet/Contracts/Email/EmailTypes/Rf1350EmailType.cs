@@ -191,7 +191,7 @@ public partial class Rf1350EmailType : IEmailType
         
         return "Arkivert og greier";*/
 
-        return await Task.FromResult("Not implemented yet");
+        return await Task.FromResult($"Not implemented yet for {flowStatus.Type}");
     }
     
     private async Task<string> HandleAnmodningOmSluttutbetaling(FlowStatus flowStatus)
@@ -215,7 +215,7 @@ public partial class Rf1350EmailType : IEmailType
         
         return "Arkivert og greier";*/
         
-        return await Task.FromResult("Not implemented yet");
+        return await Task.FromResult($"Not implemented yet for {flowStatus.Type}");
     }
 
     [GeneratedRegex(@"^(\d{2})-(\d{1,6})$")]

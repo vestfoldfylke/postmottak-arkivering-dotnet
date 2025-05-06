@@ -1,12 +1,9 @@
 using System;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
 using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
 using postmottak_arkivering_dotnet.Utils;
 
@@ -19,8 +16,6 @@ public interface IAiRf1350Service
 
 public class AiRf1350Service : IAiRf1350Service
 {
-    private readonly ILogger<AiRf1350Service> _logger;
-    
     private readonly ChatCompletionAgent _agent;
     
     private readonly Type _agentResponseFormat = typeof(Rf1350ChatResult);
@@ -42,15 +37,12 @@ public class AiRf1350Service : IAiRf1350Service
                                              Et prosjektnummer ser slik ut: 00-0000.
                                              """;
 
-    public AiRf1350Service(IConfiguration config, ILogger<AiRf1350Service> logger)
+    public AiRf1350Service()
     {
-        _logger = logger;
-
         // get a new kernel builder
         IKernelBuilder kernelBuilder = AiHelper.CreateNewKernelBuilder(AgentLogLevel);
         
         // add services needed by the plugins (if any)
-        //kernelBuilder.Services.AddSingleton(config);
         
         // add needed plugins (if any)
         

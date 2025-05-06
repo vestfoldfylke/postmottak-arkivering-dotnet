@@ -1,4 +1,3 @@
-using System;
 using System.Threading.Tasks;
 using Microsoft.Graph.Models;
 
@@ -7,10 +6,6 @@ namespace postmottak_arkivering_dotnet.Contracts.Email.EmailTypes;
 public class CaseNumberEmailType : IEmailType
 {
     public string Title { get; } = "CaseNumber";
-
-    public CaseNumberEmailType(IServiceProvider serviceProvider)
-    {
-    }
 
     public async Task<bool> MatchCriteria(Message message)
     {

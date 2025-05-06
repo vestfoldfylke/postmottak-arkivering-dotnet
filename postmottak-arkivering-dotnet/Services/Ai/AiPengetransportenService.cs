@@ -1,12 +1,9 @@
 using System;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
 using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
 using postmottak_arkivering_dotnet.Utils;
 
@@ -19,8 +16,6 @@ public interface IAiPengetransportenService
 
 public class AiPengetransportenService : IAiPengetransportenService
 {
-    private readonly ILogger<AiPengetransportenService> _logger;
-    
     private readonly ChatCompletionAgent _agent;
     
     private readonly Type _agentResponseFormat = typeof(PengetransportenChatResult);
@@ -40,15 +35,12 @@ public class AiPengetransportenService : IAiPengetransportenService
                                              Du svarer alltid i json format
                                              """;
 
-    public AiPengetransportenService(IConfiguration config, ILogger<AiPengetransportenService> logger)
+    public AiPengetransportenService()
     {
-        _logger = logger;
-
         // get a new kernel builder
         IKernelBuilder kernelBuilder = AiHelper.CreateNewKernelBuilder(AgentLogLevel);
         
         // add services needed by the plugins (if any)
-        //kernelBuilder.Services.AddSingleton(config);
         
         // add needed plugins (if any)
         

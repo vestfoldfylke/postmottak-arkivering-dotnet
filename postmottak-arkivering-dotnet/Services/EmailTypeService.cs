@@ -64,7 +64,7 @@ public class EmailTypeService : IEmailTypeService
     
     private IEmailType CreateEmailTypeInstance(Type emailType)
     {
-        var typeInstance = Activator.CreateInstance(emailType, _serviceProvider);
+        var typeInstance = CreateInstance(emailType);
         if (typeInstance == null)
         {
             throw new InvalidOperationException($"Failed to create instance of type {emailType.Name}");
@@ -77,5 +77,24 @@ public class EmailTypeService : IEmailTypeService
         }
 
         return emailTypeInstance;
+    }
+
+    private object? CreateInstance(Type emailType)
+    {
+        try
+        {
+            return Activator.CreateInstance(emailType, _serviceProvider);
+        }
+        catch (Exception)
+        {
+            try
+            {
+                return Activator.CreateInstance(emailType);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Failed to create instance of type {emailType.Name} with and without IServiceProvider param", ex);
+            } 
+        }
     }
 }
