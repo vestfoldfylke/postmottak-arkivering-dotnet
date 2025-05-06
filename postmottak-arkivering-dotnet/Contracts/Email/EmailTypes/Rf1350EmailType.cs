@@ -8,13 +8,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Graph.Models;
 using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
 using postmottak_arkivering_dotnet.Services;
+using postmottak_arkivering_dotnet.Services.Ai;
 
 namespace postmottak_arkivering_dotnet.Contracts.Email.EmailTypes;
 
 public partial class Rf1350EmailType : IEmailType
 {
     private readonly IArchiveService _archiveService;
-    private readonly IAiAgentService _aiAgentService;
+    private readonly IAiRf1350Service _aiRf1350Service;
     
     private const string FromAddress = "ikkesvar@regionalforvaltning.no";
 
@@ -33,7 +34,7 @@ public partial class Rf1350EmailType : IEmailType
 
     public Rf1350EmailType(IServiceProvider serviceProvider)
     {
-        _aiAgentService = serviceProvider.GetService<IAiAgentService>()!;
+        _aiRf1350Service = serviceProvider.GetService<IAiRf1350Service>()!;
         _archiveService = serviceProvider.GetService<IArchiveService>()!;
     }
     
@@ -57,7 +58,7 @@ public partial class Rf1350EmailType : IEmailType
             return false;
         }
         
-        var (_, result) = await _aiAgentService.Rf1350(message.Body!.Content!);
+        var (_, result) = await _aiRf1350Service.Ask(message.Body!.Content!);
         if (string.IsNullOrEmpty(result?.Type) || string.IsNullOrEmpty(result.ReferenceNumber))
         {
             return false;
@@ -98,11 +99,13 @@ public partial class Rf1350EmailType : IEmailType
         {
             return await HandleOverforingAvMottattSoknad(flowStatus);
         }
-        if (string.Equals(_result.Type, AutomatiskKvitteringPaInnsendtSoknad, StringComparison.OrdinalIgnoreCase))
+        
+        if (_result.Type.Equals(AutomatiskKvitteringPaInnsendtSoknad, StringComparison.OrdinalIgnoreCase))
         {
             return await HandleAutomatiskKvitteringPaInnsendtSoknad(flowStatus);
         }
-        if (string.Equals(_result.Type, AnmodningOmSluttutbetaling, StringComparison.OrdinalIgnoreCase))
+        
+        if (_result.Type.Equals(AnmodningOmSluttutbetaling, StringComparison.OrdinalIgnoreCase))
         {
             return await HandleAnmodningOmSluttutbetaling(flowStatus);
         }
@@ -169,7 +172,7 @@ public partial class Rf1350EmailType : IEmailType
     
     private async Task<string> HandleAutomatiskKvitteringPaInnsendtSoknad(FlowStatus flowStatus)
     {
-        if (string.IsNullOrEmpty(flowStatus.Archive.CaseNumber))
+        /*if (string.IsNullOrEmpty(flowStatus.Archive.CaseNumber))
         {
             var cases = await _archiveService.GetCases(new
             {
@@ -186,12 +189,14 @@ public partial class Rf1350EmailType : IEmailType
             flowStatus.Archive.CaseNumber = caseNumber;
         }
         
-        return "Arkivert og greier";
+        return "Arkivert og greier";*/
+
+        return await Task.FromResult("Not implemented yet");
     }
     
     private async Task<string> HandleAnmodningOmSluttutbetaling(FlowStatus flowStatus)
     {
-        if (string.IsNullOrEmpty(flowStatus.Archive.CaseNumber))
+        /*if (string.IsNullOrEmpty(flowStatus.Archive.CaseNumber))
         {
             var cases = await _archiveService.GetCases(new
             {
@@ -208,7 +213,9 @@ public partial class Rf1350EmailType : IEmailType
             flowStatus.Archive.CaseNumber = caseNumber;
         }
         
-        return "Arkivert og greier";
+        return "Arkivert og greier";*/
+        
+        return await Task.FromResult("Not implemented yet");
     }
 
     [GeneratedRegex(@"^(\d{2})-(\d{1,6})$")]

@@ -17,6 +17,7 @@ using postmottak_arkivering_dotnet.Contracts;
 using postmottak_arkivering_dotnet.Contracts.Ai;
 using postmottak_arkivering_dotnet.Contracts.Email;
 using postmottak_arkivering_dotnet.Services;
+using postmottak_arkivering_dotnet.Services.Ai;
 using FromBodyAttribute = Microsoft.Azure.Functions.Worker.Http.FromBodyAttribute;
 
 namespace postmottak_arkivering_dotnet.Functions;
@@ -25,7 +26,9 @@ public class Archive
 {
     private readonly IBlobService _blobService;
     private readonly IGraphService _graphService;
-    private readonly IAiAgentService _aiAgentService;
+    private readonly IAiPengetransportenService _aiPengetransportenService;
+    private readonly IAiPluginTestService _aiPluginTestService;
+    private readonly IAiRf1350Service _aiRf1350Service;
     private readonly ILogger<Archive> _logger;
     private readonly IEmailTypeService _emailTypeService;
 
@@ -36,12 +39,15 @@ public class Archive
     private readonly string _postboxUpn;
 
     public Archive(IConfiguration configuration, ILogger<Archive> logger, IGraphService graphService,
-        IBlobService blobService, IAiAgentService aiAgentService, IEmailTypeService emailTypeService)
+        IBlobService blobService, IAiPengetransportenService aiPengetransportenService,
+        IAiPluginTestService aiPluginTestService, IAiRf1350Service aiRf1350Service, IEmailTypeService emailTypeService)
     {
         _logger = logger;
         _graphService = graphService;
         _blobService = blobService;
-        _aiAgentService = aiAgentService;
+        _aiPengetransportenService = aiPengetransportenService;
+        _aiPluginTestService = aiPluginTestService;
+        _aiRf1350Service = aiRf1350Service;
         _emailTypeService = emailTypeService;
         
         _blobStorageContainerName = configuration["BlobStorageContainerName"] ?? throw new NullReferenceException();
@@ -134,20 +140,42 @@ public class Archive
 
         return new OkObjectResult(mailFolders);
     }
-    
+
     [Function("AskArntIvan")]
     [OpenApiOperation(operationId: "AskArntIvan")]
-    [OpenApiSecurity("Authentication", SecuritySchemeType.ApiKey, Name = "X-Functions-Key", In = OpenApiSecurityLocationType.Header)]
+    [OpenApiSecurity("Authentication", SecuritySchemeType.ApiKey, Name = "X-Functions-Key",
+        In = OpenApiSecurityLocationType.Header)]
     [OpenApiRequestBody("application/json", typeof(AiPromptRequest), Description = "Prompt to ask Arnt Ivan")]
     [OpenApiResponseWithBody(HttpStatusCode.OK, "text/plain", typeof(string), Description = "Response from Arnt Ivan")]
-    [OpenApiResponseWithBody(HttpStatusCode.InternalServerError, "text/plain", typeof(string), Description = "Error occured")]
-    public async Task<IActionResult> AskArntIvan([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequest req, [FromBody] AiPromptRequest promptRequest)
+    [OpenApiResponseWithBody(HttpStatusCode.BadRequest, "text/plain", typeof(string),
+        Description = "Unknown agent")]
+    [OpenApiResponseWithBody(HttpStatusCode.InternalServerError, "text/plain", typeof(string),
+        Description = "Error occured")]
+    public async Task<IActionResult> AskArntIvan([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequest req,
+        [FromBody] AiPromptRequest promptRequest)
     {
         _logger.LogInformation("AskArntIvan function started");
         
-        var (_, result) = await _aiAgentService.Rf1350(promptRequest.Prompt);
-        
-        return new OkObjectResult(result);
+        switch (promptRequest.Agent)
+        {
+            case "Pengetransporten":
+            {
+                var (_, result) = await _aiPengetransportenService.Ask(promptRequest.Prompt);
+                return new OkObjectResult(result);
+            }
+            case "PluginTest":
+            {
+                var (_, result) = await _aiPluginTestService.Ask(promptRequest.Prompt);
+                return new OkObjectResult(result);
+            }
+            case "Rf1350":
+            {
+                var (_, result) = await _aiRf1350Service.Ask(promptRequest.Prompt);
+                return new OkObjectResult(result);
+            }
+            default:
+                return new BadRequestObjectResult("Unknown agent");
+        }
     }
 
     private async Task HandleKnownMessageTypes(List<(IEmailType, FlowStatus)> messagesToHandle)

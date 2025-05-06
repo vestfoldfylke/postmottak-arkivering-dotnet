@@ -6,7 +6,7 @@ namespace postmottak_arkivering_dotnet.Contracts.Email.EmailTypes;
 
 public class CaseNumberEmailType : IEmailType
 {
-    public string Title { get; } = "Jarlsbergfilla";
+    public string Title { get; } = "CaseNumber";
 
     public CaseNumberEmailType(IServiceProvider serviceProvider)
     {
@@ -29,10 +29,8 @@ public class CaseNumberEmailType : IEmailType
         // ikke hit allikevel?
         
         // Create document in case (if not already done)
-        // throw shit
             
         // Reply sender
-        // throw shit
-        return Task.FromResult("tuttu");
+        return Task.FromResult("Finito");
     }
 }

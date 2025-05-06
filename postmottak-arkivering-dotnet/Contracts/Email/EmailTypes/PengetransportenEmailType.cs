@@ -8,12 +8,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Graph.Models;
 using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
 using postmottak_arkivering_dotnet.Services;
+using postmottak_arkivering_dotnet.Services.Ai;
 
 namespace postmottak_arkivering_dotnet.Contracts.Email.EmailTypes;
 
 public class PengetransportenEmailType : IEmailType
 {
-    private readonly IAiAgentService _aiAgentService;
+    private readonly IAiPengetransportenService _aiPengetransportenService;
     private readonly IGraphService _graphService;
 
     private readonly string _postmottakUpn;
@@ -68,7 +69,7 @@ public class PengetransportenEmailType : IEmailType
 
     public PengetransportenEmailType(IServiceProvider serviceProvider)
     {
-        _aiAgentService = serviceProvider.GetService<IAiAgentService>()!;
+        _aiPengetransportenService = serviceProvider.GetService<IAiPengetransportenService>()!;
         _graphService = serviceProvider.GetService<IGraphService>()!;
         
         var configuration = serviceProvider.GetService<IConfiguration>()!;
@@ -89,7 +90,7 @@ public class PengetransportenEmailType : IEmailType
             return false;
         }
         
-        var (_, result) = await _aiAgentService.Pengetransporten(message.Body!.Content!);
+        var (_, result) = await _aiPengetransportenService.Ask(message.Body!.Content!);
         if (result is null || !result.IsInvoiceRelated)
         {
             return false;
@@ -118,7 +119,7 @@ public class PengetransportenEmailType : IEmailType
 
         List<string> toRecipients =
         [
-            "noreply@vestfoldfylke.no"
+            "testarkivering@vestfoldfylke.no"
         ];
         
         await _graphService.ForwardMailMessage(_postmottakUpn, flowStatus.Message.Id!, toRecipients);
