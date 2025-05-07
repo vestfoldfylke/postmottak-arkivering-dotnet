@@ -46,7 +46,7 @@ public class AiPluginTestService : IAiPluginTestService
     
     public async Task<(ChatHistory, PluginTestChatResult?)> Ask(string prompt, ChatHistory? chatHistory = null)
     {
-        var history = await _agent.InvokeAgent(prompt, chatHistory);
+        var history = await _agent.InvokeAgent(prompt, nameof(PluginTestChatResult), chatHistory);
         
         return (history, AiHelper.GetLatestAnswer<PluginTestChatResult>(history));
     }

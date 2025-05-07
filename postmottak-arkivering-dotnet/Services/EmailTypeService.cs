@@ -33,7 +33,7 @@ public class EmailTypeService : IEmailTypeService
     
     public async Task<IEmailType?> GetEmailType(Message message)
     {
-        if (string.IsNullOrEmpty(message.Body?.Content))
+        if (string.IsNullOrEmpty(message.Body?.Content) || string.IsNullOrEmpty(message.Subject))
         {
             return null;
         }

@@ -77,9 +77,9 @@ internal static class AiHelper
         return JsonSerializer.Deserialize<T>(content) ?? throw new InvalidOperationException($"Failed to deserialize AI response into type {typeof(T).Name}");
     }
     
-    internal static async Task<ChatHistory> InvokeAgent(this ChatCompletionAgent agent, string prompt, ChatHistory? chatHistory = null)
+    internal static async Task<ChatHistory> InvokeAgent(this ChatCompletionAgent agent, string prompt, string responseType, ChatHistory? chatHistory = null)
     {
-        Log.Logger.Information("{AgentName} question: {Prompt}", agent.Name, prompt);
+        Log.Logger.Debug("{AgentName} of type {ResponseType} with question: {Prompt}", agent.Name, responseType, prompt);
         
         var history = chatHistory ?? [];
 
@@ -90,7 +90,7 @@ internal static class AiHelper
         {
             var resultContent = response.Content ?? string.Empty;
            
-            Log.Logger.Information("{AgentName} answer: {Result}", agent.Name, resultContent);
+            Log.Logger.Debug("{AgentName} of type {ResponseType} with answer: {Result}", agent.Name, responseType, resultContent);
         }
         
         return history;

@@ -14,7 +14,7 @@ namespace postmottak_arkivering_dotnet.Contracts.Email.EmailTypes;
 
 public class PengetransportenEmailType : IEmailType
 {
-    private readonly IAiPengetransportenService _aiPengetransportenService;
+    private readonly IAiArntIvanService _aiArntIvanService;
     private readonly IGraphService _graphService;
 
     private readonly string _postmottakUpn;
@@ -69,7 +69,7 @@ public class PengetransportenEmailType : IEmailType
 
     public PengetransportenEmailType(IServiceProvider serviceProvider)
     {
-        _aiPengetransportenService = serviceProvider.GetService<IAiPengetransportenService>()!;
+        _aiArntIvanService = serviceProvider.GetService<IAiArntIvanService>()!;
         _graphService = serviceProvider.GetService<IGraphService>()!;
         
         var configuration = serviceProvider.GetService<IConfiguration>()!;
@@ -80,17 +80,12 @@ public class PengetransportenEmailType : IEmailType
     {
         await Task.CompletedTask;
 
-        if (string.IsNullOrEmpty(message.Subject))
+        if (!_subjects.Any(subject => message.Subject!.Contains(subject, StringComparison.OrdinalIgnoreCase)))
         {
             return false;
         }
         
-        if (!_subjects.Any(subject => message.Subject.Contains(subject, StringComparison.OrdinalIgnoreCase)))
-        {
-            return false;
-        }
-        
-        var (_, result) = await _aiPengetransportenService.Ask(message.Body!.Content!);
+        var (_, result) = await _aiArntIvanService.Ask<PengetransportenChatResult>(message.Body!.Content!);
         if (result is null || !result.IsInvoiceRelated)
         {
             return false;

@@ -22,9 +22,8 @@ builder.Services.AddSingleton<IArchiveService, ArchiveService>();
 builder.Services.AddSingleton<IBlobService, BlobService>();
 
 // AI Agent Services
-builder.Services.AddSingleton<IAiPengetransportenService, AiPengetransportenService>();
+builder.Services.AddSingleton<IAiArntIvanService, AiArntIvanService>();
 builder.Services.AddSingleton<IAiPluginTestService, AiPluginTestService>();
-builder.Services.AddSingleton<IAiRf1350Service, AiRf1350Service>();
 
 AiHelper.ConfigurationManager = builder.Configuration;
 

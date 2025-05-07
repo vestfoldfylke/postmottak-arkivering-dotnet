@@ -13,18 +13,16 @@ namespace postmottak_arkivering_dotnet_tests;
 
 public class EmailTypeTests
 {
-    private readonly IAiPengetransportenService _aiPengetransportenService;
+    private readonly IAiArntIvanService _aiArntIvanService;
     private readonly IAiPluginTestService _aiPluginTestService;
-    private readonly IAiRf1350Service _aiRf1350Service;
     private readonly IArchiveService _archiveService;
 
     private readonly EmailTypeService _emailTypeService;
     
     public EmailTypeTests()
     {
-        _aiPengetransportenService = Substitute.For<IAiPengetransportenService>();
+        _aiArntIvanService = Substitute.For<IAiArntIvanService>();
         _aiPluginTestService = Substitute.For<IAiPluginTestService>();
-        _aiRf1350Service = Substitute.For<IAiRf1350Service>();
         _archiveService = Substitute.For<IArchiveService>();
         
         IConfiguration configuration = new ConfigurationBuilder()
@@ -32,9 +30,8 @@ public class EmailTypeTests
             .Build();
         
         var serviceProvider = Substitute.For<IServiceProvider>();
-        serviceProvider.GetService(typeof(IAiPengetransportenService)).Returns(_aiPengetransportenService);
+        serviceProvider.GetService(typeof(IAiArntIvanService)).Returns(_aiArntIvanService);
         serviceProvider.GetService(typeof(IAiPluginTestService)).Returns(_aiPluginTestService);
-        serviceProvider.GetService(typeof(IAiRf1350Service)).Returns(_aiRf1350Service);
         serviceProvider.GetService(typeof(IArchiveService)).Returns(_archiveService);
         serviceProvider.GetService(typeof(IConfiguration)).Returns(configuration);
         
@@ -58,26 +55,8 @@ public class EmailTypeTests
         
         Assert.Null(missingSubject);
         
-        Assert.Empty(_aiPengetransportenService.ReceivedCalls());
+        Assert.Empty(_aiArntIvanService.ReceivedCalls());
         Assert.Empty(_aiPluginTestService.ReceivedCalls());
-        Assert.Empty(_aiRf1350Service.ReceivedCalls());
-        Assert.Empty(_archiveService.ReceivedCalls());
-    }
-    
-    [Theory]
-    [InlineData("Søknad om rusmidler")]
-    [InlineData("Søknad om skudd")]
-    public async Task GetEmailType_Should_Return_CaseNumberEmailType(string subject)
-    {
-        var message = GenerateMessage(subject);
-
-        var emailType = await _emailTypeService.GetEmailType(message);
-        
-        Assert.IsAssignableFrom<CaseNumberEmailType>(emailType);
-        
-        Assert.Empty(_aiPengetransportenService.ReceivedCalls());
-        Assert.Empty(_aiPluginTestService.ReceivedCalls());
-        Assert.Empty(_aiRf1350Service.ReceivedCalls());
         Assert.Empty(_archiveService.ReceivedCalls());
     }
     
@@ -87,12 +66,11 @@ public class EmailTypeTests
     [InlineData("Faktura for betaling", "Faktura må betales snarest")]
     public async Task GetEmailType_Should_Return_PengetransportenEmailType(string subject, string body)
     {
-        _aiPengetransportenService.Ask(Arg.Any<string>(), Arg.Any<ChatHistory>())
+        _aiArntIvanService.Ask<PengetransportenChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>())
             .Returns(([], new PengetransportenChatResult
             {
                 IsInvoiceRelated = true,
-                Description = "Whatever",
-                Attachments = []
+                Description = "Whatever"
             }));
         
         var message = GenerateMessage(subject, body);
@@ -101,10 +79,9 @@ public class EmailTypeTests
         
         Assert.IsAssignableFrom<PengetransportenEmailType>(emailType);
         
-        await _aiPengetransportenService.Received(1).Ask(body);
+        await _aiArntIvanService.Received(1).Ask<PengetransportenChatResult>(body);
         
         Assert.Empty(_aiPluginTestService.ReceivedCalls());
-        Assert.Empty(_aiRf1350Service.ReceivedCalls());
         Assert.Empty(_archiveService.ReceivedCalls());
     }
     
@@ -123,7 +100,7 @@ public class EmailTypeTests
     [InlineData("RF13.50 - Automatisk epost til arkiv", "00-123456", "0000-0000")]
     public async Task GetEmailType_Should_Return_Rf1350EmailType(string subject, string projectNumber, string referenceNumber)
     {
-        _aiRf1350Service.Ask(Arg.Any<string>(), Arg.Any<ChatHistory>())
+        _aiArntIvanService.Ask<Rf1350ChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>())
             .Returns(([], new Rf1350ChatResult
             {
                 ProjectNumber = projectNumber,
@@ -139,10 +116,10 @@ public class EmailTypeTests
         
         Assert.IsAssignableFrom<Rf1350EmailType>(emailType);
         
-        await _aiRf1350Service.Received(1).Ask(message.Body!.Content!);
+        await _aiArntIvanService.Received(1).Ask<Rf1350ChatResult>(message.Body!.Content!);
 
         var pengetransportenCallCount = subject.Contains("kvittering") ? 1 : 0;
-        await _aiPengetransportenService.Received(pengetransportenCallCount).Ask(message.Body!.Content!);
+        await _aiArntIvanService.Received(pengetransportenCallCount).Ask<PengetransportenChatResult>(message.Body!.Content!);
         
         Assert.Empty(_aiPluginTestService.ReceivedCalls());
         Assert.Empty(_archiveService.ReceivedCalls());

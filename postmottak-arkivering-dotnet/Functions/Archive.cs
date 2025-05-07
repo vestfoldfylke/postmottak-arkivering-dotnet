@@ -15,6 +15,7 @@ using Microsoft.Graph.Models;
 using Microsoft.OpenApi.Models;
 using postmottak_arkivering_dotnet.Contracts;
 using postmottak_arkivering_dotnet.Contracts.Ai;
+using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
 using postmottak_arkivering_dotnet.Contracts.Email;
 using postmottak_arkivering_dotnet.Services;
 using postmottak_arkivering_dotnet.Services.Ai;
@@ -26,9 +27,8 @@ public class Archive
 {
     private readonly IBlobService _blobService;
     private readonly IGraphService _graphService;
-    private readonly IAiPengetransportenService _aiPengetransportenService;
+    private readonly IAiArntIvanService _aiArntIvanService;
     private readonly IAiPluginTestService _aiPluginTestService;
-    private readonly IAiRf1350Service _aiRf1350Service;
     private readonly ILogger<Archive> _logger;
     private readonly IEmailTypeService _emailTypeService;
 
@@ -39,17 +39,16 @@ public class Archive
     private readonly string _postboxUpn;
 
     public Archive(IConfiguration configuration, ILogger<Archive> logger, IGraphService graphService,
-        IBlobService blobService, IAiPengetransportenService aiPengetransportenService,
-        IAiPluginTestService aiPluginTestService, IAiRf1350Service aiRf1350Service, IEmailTypeService emailTypeService)
+        IBlobService blobService, IAiPluginTestService aiPluginTestService, IEmailTypeService emailTypeService,
+        IAiArntIvanService aiArntIvanService)
     {
         _logger = logger;
         _graphService = graphService;
         _blobService = blobService;
-        _aiPengetransportenService = aiPengetransportenService;
         _aiPluginTestService = aiPluginTestService;
-        _aiRf1350Service = aiRf1350Service;
         _emailTypeService = emailTypeService;
-        
+        _aiArntIvanService = aiArntIvanService;
+
         _blobStorageContainerName = configuration["BlobStorageContainerName"] ?? throw new NullReferenceException();
         
         _mailFolderInboxId = configuration["Postmottak_MailFolder_Inbox_Id"] ?? throw new NullReferenceException();
@@ -158,9 +157,14 @@ public class Archive
         
         switch (promptRequest.Agent)
         {
+            case "ArntIvan":
+            {
+                var (_, result) = await _aiArntIvanService.Ask<GeneralChatResult>(promptRequest.Prompt);
+                return new OkObjectResult(result);
+            }
             case "Pengetransporten":
             {
-                var (_, result) = await _aiPengetransportenService.Ask(promptRequest.Prompt);
+                var (_, result) = await _aiArntIvanService.Ask<PengetransportenChatResult>(promptRequest.Prompt);
                 return new OkObjectResult(result);
             }
             case "PluginTest":
@@ -170,7 +174,7 @@ public class Archive
             }
             case "Rf1350":
             {
-                var (_, result) = await _aiRf1350Service.Ask(promptRequest.Prompt);
+                var (_, result) = await _aiArntIvanService.Ask<Rf1350ChatResult>(promptRequest.Prompt);
                 return new OkObjectResult(result);
             }
             default:

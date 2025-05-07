@@ -14,8 +14,8 @@ namespace postmottak_arkivering_dotnet.Contracts.Email.EmailTypes;
 
 public partial class Rf1350EmailType : IEmailType
 {
+    private readonly IAiArntIvanService _aiArntIvanService;
     private readonly IArchiveService _archiveService;
-    private readonly IAiRf1350Service _aiRf1350Service;
     
     private const string FromAddress = "ikkesvar@regionalforvaltning.no";
 
@@ -26,7 +26,7 @@ public partial class Rf1350EmailType : IEmailType
     
     private const string AnmodningOmSluttutbetaling = "Anmodning om Sluttutbetaling";
     private const string AutomatiskKvitteringPaInnsendtSoknad = "Automatisk kvittering på innsendt søknad";
-    private const string OverforingAvMottattSoknad = "Overføring av mottatt søknad!";
+    private const string OverforingAvMottattSoknad = "Overføring av mottatt søknad";
 
     private Rf1350ChatResult? _result;
     
@@ -34,7 +34,7 @@ public partial class Rf1350EmailType : IEmailType
 
     public Rf1350EmailType(IServiceProvider serviceProvider)
     {
-        _aiRf1350Service = serviceProvider.GetService<IAiRf1350Service>()!;
+        _aiArntIvanService = serviceProvider.GetService<IAiArntIvanService>()!;
         _archiveService = serviceProvider.GetService<IArchiveService>()!;
     }
     
@@ -47,18 +47,13 @@ public partial class Rf1350EmailType : IEmailType
             return false;
         }
 
-        if (string.IsNullOrEmpty(message.Subject))
-        {
-            return false;
-        }
-
         if (!message.From.EmailAddress.Address.Equals(FromAddress, StringComparison.OrdinalIgnoreCase)
-            || !_subjects.Any(subject => message.Subject.StartsWith(subject, StringComparison.OrdinalIgnoreCase)))
+            || !_subjects.Any(subject => message.Subject!.StartsWith(subject, StringComparison.OrdinalIgnoreCase)))
         {
             return false;
         }
         
-        var (_, result) = await _aiRf1350Service.Ask(message.Body!.Content!);
+        var (_, result) = await _aiArntIvanService.Ask<Rf1350ChatResult>(message.Body!.Content!);
         if (string.IsNullOrEmpty(result?.Type) || string.IsNullOrEmpty(result.ReferenceNumber))
         {
             return false;
