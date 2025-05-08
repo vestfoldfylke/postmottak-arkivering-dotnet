@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.ComponentModel;
 
 namespace postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
