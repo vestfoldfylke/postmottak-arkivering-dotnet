@@ -24,13 +24,18 @@ public partial class Rf1350EmailType : IEmailType
         "RF13.50 - Automatisk epost til arkiv"
     ];
     
+    private readonly List<string> _caseStatuses = [
+        "Under behandling",
+        "Reservert"
+    ];
+    
     private const string AnmodningOmSluttutbetaling = "Anmodning om Sluttutbetaling";
     private const string AutomatiskKvitteringPaInnsendtSoknad = "Automatisk kvittering på innsendt søknad";
     private const string OverforingAvMottattSoknad = "Overføring av mottatt søknad";
 
     private Rf1350ChatResult? _result;
     
-    public string Title { get; } = "RF13.50";
+    public string Title => "RF13.50";
 
     public Rf1350EmailType(IServiceProvider serviceProvider)
     {
@@ -115,11 +120,6 @@ public partial class Rf1350EmailType : IEmailType
             throw new MissingFieldException("Project owner is missing");
         }
         
-        List<string> caseStatuses = [
-            "Under behandling",
-            "Reservert"
-        ];
-        
         if (string.IsNullOrEmpty(flowStatus.Archive.CaseNumber))
         {
             var projects = await _archiveService.GetProjects(new
@@ -140,7 +140,7 @@ public partial class Rf1350EmailType : IEmailType
                 Title = $"RF13.50%{_result!.ReferenceNumber}%"
             });
 
-            var activeCase = cases.FirstOrDefault(c => c is not null && caseStatuses.Contains(c["Status"]!.ToString()));
+            var activeCase = cases.FirstOrDefault(c => c is not null && _caseStatuses.Contains(c["Status"]!.ToString()));
 
             if (activeCase is null)
             {
