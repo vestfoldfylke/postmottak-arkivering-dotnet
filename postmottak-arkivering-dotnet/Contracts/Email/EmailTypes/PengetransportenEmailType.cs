@@ -65,6 +65,7 @@ public class PengetransportenEmailType : IEmailType
 
     private PengetransportenChatResult? _result;
     
+    public bool IncludeFunFact => true;
     public string Title => "Pengetransporten";
 
     public PengetransportenEmailType(IServiceProvider serviceProvider)

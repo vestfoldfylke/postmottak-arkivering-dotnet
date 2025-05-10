@@ -5,6 +5,7 @@ namespace postmottak_arkivering_dotnet.Contracts.Email;
 
 public interface IEmailType
 {
+    bool IncludeFunFact { get; }
     string Title { get; }
     
     Task<bool> MatchCriteria(Message message);

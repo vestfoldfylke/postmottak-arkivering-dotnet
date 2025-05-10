@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
+using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
 using postmottak_arkivering_dotnet.Utils;
 
 namespace postmottak_arkivering_dotnet.Services.Ai;
@@ -11,6 +12,7 @@ namespace postmottak_arkivering_dotnet.Services.Ai;
 public interface IAiArntIvanService
 {
     Task<(ChatHistory, T?)> Ask<T>(string prompt, ChatHistory? chatHistory = null);
+    Task<string> FunFact();
 }
 
 public class AiArntIvanService : IAiArntIvanService
@@ -33,6 +35,15 @@ public class AiArntIvanService : IAiArntIvanService
         var history = await agent.InvokeAgent(prompt, typeof(T).Name, chatHistory);
         
         return (history, AiHelper.GetLatestAnswer<T>(history));
+    }
+
+    public async Task<string> FunFact()
+    {
+        ChatCompletionAgent agent = GetOrCreateAgent<FunFactMessage>();
+        
+        var history = await agent.InvokeAgent("Gi meg en fun fact", nameof(FunFactMessage));
+        
+        return AiHelper.GetLatestAnswer<FunFactMessage>(history)?.Message ?? string.Empty;
     }
 
     private ChatCompletionAgent GetOrCreateAgent<T>()

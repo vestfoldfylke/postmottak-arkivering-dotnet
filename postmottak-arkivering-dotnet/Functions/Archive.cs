@@ -189,6 +189,10 @@ public class Archive
             try
             {
                 var handledMessage = await emailType.HandleMessage(flowStatus);
+                var funFact = emailType.IncludeFunFact ? await _aiArntIvanService.FunFact() : string.Empty;
+                var funFactMessage = emailType.IncludeFunFact && !string.IsNullOrEmpty(funFact)
+                    ? $"<br />{funFact}"
+                    : string.Empty;
                 
                 // update body to reflect that its handled
                 Message message = new Message
@@ -196,10 +200,17 @@ public class Archive
                     Body = new ItemBody
                     {
                         Content =
-                            @$"<div style='border: 1px solid black; padding: 10px; background-color: #f9f9f9;'>
-                            <div style='color: red;'>Automatisk håndteringstype: <b>{emailType.Title}</b><br />
-                            Klokkeslett: <i>{DateTime.Now:dd.MM.yyyy HH:mm:ss}</i><br />
-                            Melding: {handledMessage}</div></div><br /><br/>{flowStatus.Message.Body!.Content}",
+                            @$"
+                            <div style='border: 1px solid black; padding: 10px; background-color: #f9f9f9;'>
+                                <div style='color: red;'>
+                                    Automatisk håndteringstype: <b>{emailType.Title}</b><br />
+                                    Klokkeslett: <i>{DateTime.Now:dd.MM.yyyy HH:mm:ss}</i><br />
+                                    Melding: {handledMessage}
+                                    {funFactMessage}
+                                </div>
+                            </div>
+                            <br /><br/>
+                            {flowStatus.Message.Body!.Content}",
                         ContentType = BodyType.Html
                     },
                 };
