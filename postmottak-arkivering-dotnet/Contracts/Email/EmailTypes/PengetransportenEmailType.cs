@@ -9,6 +9,7 @@ using Microsoft.Graph.Models;
 using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
 using postmottak_arkivering_dotnet.Services;
 using postmottak_arkivering_dotnet.Services.Ai;
+using postmottak_arkivering_dotnet.Utils;
 
 namespace postmottak_arkivering_dotnet.Contracts.Email.EmailTypes;
 
@@ -118,8 +119,11 @@ public class PengetransportenEmailType : IEmailType
             "testarkivering@vestfoldfylke.no"
         ];
         
-        await _graphService.ForwardMailMessage(_postmottakUpn, flowStatus.Message.Id!, toRecipients);
+        string forwardMessage = @$"Denne e-posten er håndtert av KI og videresendt på begrunnelse: {_result.Description}.
+                                    <br />Ta kontakt med arkivet dersom du mener at dette er feil.";
         
-        return await Task.FromResult($"Denne e-posten er håndtert av KI og videresendt til {string.Join(',', toRecipients)} på begrunnelse: {_result.Description}");
+        await _graphService.ForwardMailMessage(_postmottakUpn, flowStatus.Message.Id!, toRecipients, HelperTools.GenerateHtmlBox(forwardMessage));
+        
+        return await Task.FromResult($"Denne e-posten er håndtert av KI på begrunnelse: {_result.Description}, og videresendt til <ul>{string.Join("", toRecipients.Select(recipient => $"<li>{recipient}</li>"))}</ul>");
     }
 }

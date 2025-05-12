@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 //using Azure.Core.Diagnostics;
@@ -12,14 +13,17 @@ using Microsoft.Graph.Users.Item.Messages.Item.Forward;
 using Microsoft.Graph.Users.Item.Messages.Item.Move;
 using Microsoft.Graph.Users.Item.Messages.Item.Reply;
 using Microsoft.Kiota.Abstractions;
+using postmottak_arkivering_dotnet.Contracts.Email;
 
 namespace postmottak_arkivering_dotnet.Services;
 
 public interface IGraphService
 {
-    Task ForwardMailMessage(string userPrincipalName, string messageId, List<string> recipients);
+    Task ForwardMailMessage(string userPrincipalName, string messageId, List<string> recipients, string? comment = null);
+    MailAttachment GetMailAttachment(Attachment attachment);
     Task<List<MailFolder>> GetMailFolders(string userPrincipalName);
     Task<List<MailFolder>> GetMailChildFolders(string userPrincipalName, string folderId);
+    Task<byte[]> GetMailMessageRaw(string userPrincipalName, string messageId);
     Task<List<Attachment>> GetMailMessageAttachments(string userPrincipalName, string messageId);
     Task<List<Message>> GetMailMessages(string userPrincipalName, string folderId, string[]? expandedProperties = null);
     Task<Message?> MoveMailMessage(string userPrincipalName, string messageId, string destinationFolderId);
@@ -42,7 +46,7 @@ public class GraphService : IGraphService
         _graphClient = authenticationService.CreateGraphClient();
     }
     
-    public async Task ForwardMailMessage(string userPrincipalName, string messageId, List<string> recipients)
+    public async Task ForwardMailMessage(string userPrincipalName, string messageId, List<string> recipients, string? comment = null)
     {
         var toRecipients = GetRecipients(recipients);
         if (toRecipients is null || toRecipients.Count == 0)
@@ -52,8 +56,20 @@ public class GraphService : IGraphService
 
         await _graphClient.Users[userPrincipalName].Messages[messageId].Forward.PostAsync(new ForwardPostRequestBody
         {
+            Comment = comment,
             ToRecipients = toRecipients
         }, configuration => configuration.Headers.Add(ImmutableIdHeader, ImmutableIdHeaderValue));
+    }
+    
+    public MailAttachment GetMailAttachment(Attachment attachment)
+    {
+        FileAttachment? fileAttachment = attachment as FileAttachment;
+        if (fileAttachment?.ContentBytes is null || fileAttachment.Name is null)
+        {
+            throw new InvalidOperationException("Attachment is not a file attachment");
+        }
+        
+        return new MailAttachment(fileAttachment.ContentBytes, fileAttachment.Name);
     }
 
     public async Task<List<MailFolder>> GetMailFolders(string userPrincipalName)
@@ -81,6 +97,18 @@ public class GraphService : IGraphService
         return childFolders.Value;
     }
 
+    public async Task<byte[]> GetMailMessageRaw(string userPrincipalName, string messageId)
+    {
+        await using var messageStream = await _graphClient.Users[userPrincipalName].Messages[messageId].Content
+            .GetAsync(configuration => configuration.Headers.Add(ImmutableIdHeader, ImmutableIdHeaderValue));
+        if (messageStream is null)
+        {
+            throw new InvalidOperationException("Message stream is null");
+        }
+
+        return ReadAsBytes(messageStream);
+    }
+    
     public async Task<List<Attachment>> GetMailMessageAttachments(string userPrincipalName, string messageId)
     {
         var attachments = await _graphClient.Users[userPrincipalName].Messages[messageId].Attachments.GetAsync(
@@ -197,4 +225,11 @@ public class GraphService : IGraphService
                 Address = toAddress
             }
         }).ToList();
+
+    private static byte[] ReadAsBytes(Stream input)
+    {
+        using var memoryStream = new MemoryStream();
+        input.CopyTo(memoryStream);
+        return memoryStream.ToArray();
+    }
 }

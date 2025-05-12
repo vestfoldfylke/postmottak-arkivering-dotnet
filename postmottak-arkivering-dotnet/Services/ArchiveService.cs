@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
@@ -17,6 +18,8 @@ public interface IArchiveService
     Task<JsonNode> CreateCase(object parameter);
     Task<JsonNode> CreateDocument(object parameter);
     Task<JsonArray> GetCases(object parameter);
+    Task<JsonArray> GetDocuments(object parameter);
+    (string, string) GetFileExtension(string input);
     Task<JsonArray> GetProjects(object parameter);
     Task<JsonNode> SignOff(object parameter);
 
@@ -32,6 +35,87 @@ public class ArchiveService : IArchiveService
 
     private readonly HttpClient _archiveClient;
     private readonly string[] _scopes;
+
+    private readonly string[] _fileExtensionsToConvert =
+    [
+        "PDF",
+        "JPG",
+        "EML",
+        "JPEG",
+        "XLSX",
+        "XLS",
+        "RTF",
+        "MSG",
+        "PPT",
+        "PPTX",
+        "DOCX",
+        "DOC",
+        "HTML",
+        "HTM",
+        "TIFF"
+    ];
+
+    private readonly string[] _validFileExtensions =
+    [
+        "UF",
+        "DOC",
+        "XLS",
+        "PPT",
+        "MPP",
+        "RTF",
+        "TIF",
+        "PDF",
+        "TXT",
+        "HTM",
+        "JPG",
+        "MSG",
+        "DWF",
+        "ZIP",
+        "DWG",
+        "ODT",
+        "ODS",
+        "ODG",
+        "XML",
+        "DOCX",
+        "EML",
+        "MHT",
+        "XLSX",
+        "PPTX",
+        "GIF",
+        "ONE",
+        "DOCM",
+        "SOI",
+        "MPEG-2",
+        "MP3",
+        "XLSB",
+        "PPTM",
+        "VSD",
+        "VSDX",
+        "XLSM",
+        "SOS",
+        "HTML",
+        "PNG",
+        "MOV",
+        "PPSX",
+        "WMV",
+        "XPS",
+        "JPEG",
+        "TIFF",
+        "MP4",
+        "WAV",
+        "PUB",
+        "BMP",
+        "IFC",
+        "KOF",
+        "VGT",
+        "GSI",
+        "GML",
+        "cfb",
+        "26",
+        "2",
+        "hiec",
+        "md"
+    ];
 
     private readonly JsonSerializerOptions _indentedSerializer = new JsonSerializerOptions { WriteIndented = true };
 
@@ -158,6 +242,41 @@ public class ArchiveService : IArchiveService
         }
 
         return result;
+    }
+    
+    public async Task<JsonArray> GetDocuments(object parameter)
+    {
+        var payload = new ArchivePayload
+        {
+            service = "DocumentService",
+            method = "GetDocuments",
+            parameter = parameter
+        };
+        
+        if (await Archive(payload) is not JsonArray result)
+        {
+            _logger.LogError("Failed to get documents with Parameter {@Parameter}", parameter);
+            throw new InvalidOperationException($"Failed to get documents with Parameter {JsonSerializer.Serialize(parameter, _indentedSerializer)}");
+        }
+
+        return result;
+    }
+
+    public (string, string) GetFileExtension(string input)
+    {
+        string extension = Path.GetExtension(input);
+        if (string.IsNullOrEmpty(extension))
+        {
+            return ("UF", "A");
+        }
+
+        extension = extension.Replace(".", "");
+
+        extension = _validFileExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase) ? extension : "UF";
+
+        bool convert = _fileExtensionsToConvert.Contains(extension, StringComparer.OrdinalIgnoreCase);
+        
+        return (extension, convert ? "P" : "A");
     }
 
     public async Task<JsonArray> GetProjects(object parameter)
