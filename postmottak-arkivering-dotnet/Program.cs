@@ -20,6 +20,7 @@ builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();
 builder.Services.AddSingleton<IGraphService, GraphService>();
 builder.Services.AddSingleton<IArchiveService, ArchiveService>();
 builder.Services.AddSingleton<IBlobService, BlobService>();
+builder.Services.AddSingleton<IStatisticsService, StatisticsService>();
 
 // AI Agent Services
 builder.Services.AddSingleton<IAiArntIvanService, AiArntIvanService>();

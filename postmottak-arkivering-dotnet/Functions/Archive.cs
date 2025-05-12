@@ -29,12 +29,13 @@ namespace postmottak_arkivering_dotnet.Functions;
 
 public class Archive
 {
-    private readonly IBlobService _blobService;
-    private readonly IGraphService _graphService;
     private readonly IAiArntIvanService _aiArntIvanService;
     private readonly IAiPluginTestService _aiPluginTestService;
-    private readonly ILogger<Archive> _logger;
+    private readonly IBlobService _blobService;
     private readonly IEmailTypeService _emailTypeService;
+    private readonly IGraphService _graphService;
+    private readonly ILogger<Archive> _logger;
+    private readonly IStatisticsService _statisticsService;
     
     private readonly string _blobStorageFailedName;
     private readonly string _blobStorageQueueName;
@@ -44,16 +45,22 @@ public class Archive
     private readonly string _postboxUpn;
     private readonly int[] _retryIntervals;
 
-    public Archive(IConfiguration configuration, ILogger<Archive> logger, IGraphService graphService,
-        IBlobService blobService, IAiPluginTestService aiPluginTestService, IEmailTypeService emailTypeService,
-        IAiArntIvanService aiArntIvanService)
+    public Archive(IConfiguration configuration,
+        IAiArntIvanService aiArntIvanService,
+        IAiPluginTestService aiPluginTestService,
+        IBlobService blobService,
+        IEmailTypeService emailTypeService,
+        IGraphService graphService,
+        ILogger<Archive> logger,
+        IStatisticsService statisticsService)
     {
-        _logger = logger;
-        _graphService = graphService;
-        _blobService = blobService;
-        _aiPluginTestService = aiPluginTestService;
-        _emailTypeService = emailTypeService;
         _aiArntIvanService = aiArntIvanService;
+        _aiPluginTestService = aiPluginTestService;
+        _blobService = blobService;
+        _emailTypeService = emailTypeService;
+        _graphService = graphService;
+        _logger = logger;
+        _statisticsService = statisticsService;
 
         _blobStorageFailedName = configuration["BlobStorageFailedName"] ?? "failed";
         _blobStorageQueueName = configuration["BlobStorageQueueName"] ?? "queue";
@@ -233,6 +240,8 @@ public class Archive
                     await _graphService.MoveMailMessage(_postboxUpn, flowStatus.Message.Id!, _mailFolderFinishedId);
 
                     await RemoveFlowStatusBlob(flowStatus.Type, flowStatus.Message.Id!);
+                    
+                    await _statisticsService.InsertStatistics(handledMessage, flowStatus.Message.Id!, flowStatus.Type, flowStatus.Message.From?.EmailAddress?.Address);
                 }
                 catch (Exception ex)
                 {
@@ -266,7 +275,9 @@ public class Archive
     {
         foreach (var message in messages)
         {
-            _logger.LogWarning("MessageId {MessageId} has unknown subject '{Subject}' and will be moved to manual handling folder", message.Id, message.Subject);
+            _logger.LogWarning("MessageId {MessageId} is of an unknown type and will be moved to manual handling folder", message.Id);
+            
+            await _statisticsService.InsertStatistics("Email with unknown type", message.Id!, "Unknown", message.From?.EmailAddress?.Address);
             
             Message? postMoveMessage =
                 await _graphService.MoveMailMessage(_postboxUpn, message.Id!, _mailFolderManualHandlingId);
