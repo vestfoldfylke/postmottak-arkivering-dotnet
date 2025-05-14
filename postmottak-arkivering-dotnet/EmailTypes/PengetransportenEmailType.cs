@@ -66,6 +66,8 @@ public class PengetransportenEmailType : IEmailType
         "Refund Claim"
     ];
 
+    private readonly List<string> _toRecipients;
+
     private PengetransportenChatResult? _result;
     
     public bool Enabled => true;
@@ -79,6 +81,7 @@ public class PengetransportenEmailType : IEmailType
         
         var configuration = serviceProvider.GetService<IConfiguration>()!;
         _postmottakUpn = configuration["Postmottak_UPN"] ?? throw new InvalidOperationException("Postmottak_UPN is not set in configuration");
+        _toRecipients = configuration["EmailType_Pengetransporten_Forward_Addresses"]?.Split(',').ToList() ?? throw new InvalidOperationException("EmailType_Pengetransporten_Forward_Addresses is not set in configuration");
     }
     
     public async Task<bool> MatchCriteria(Message message)
@@ -116,18 +119,12 @@ public class PengetransportenEmailType : IEmailType
         {
             throw new InvalidOperationException("Result is null. Somethings wrong");
         }
-
-        List<string> toRecipients =
-        [
-            "rune.moskvil.lyngas@vestfoldfylke.no",
-            "jorgen.thorsnes@vestfoldfylke.no"
-        ];
         
         string forwardMessage = @$"Denne e-posten er håndtert av KI og videresendt på begrunnelse: {_result.Description}.
                                     <br />Ta kontakt med arkivet dersom du mener at dette er feil.";
         
-        await _graphService.ForwardMailMessage(_postmottakUpn, flowStatus.Message.Id!, toRecipients, HelperTools.GenerateHtmlBox(forwardMessage));
+        await _graphService.ForwardMailMessage(_postmottakUpn, flowStatus.Message.Id!, _toRecipients, HelperTools.GenerateHtmlBox(forwardMessage));
         
-        return await Task.FromResult($"Denne e-posten er håndtert av KI på begrunnelse: {_result.Description}, og videresendt til <ul>{string.Join("", toRecipients.Select(recipient => $"<li>{recipient}</li>"))}</ul>");
+        return $"Denne e-posten er håndtert av KI på begrunnelse: {_result.Description}, og videresendt til <ul>{string.Join("", _toRecipients.Select(recipient => $"<li>{recipient}</li>"))}</ul>";
     }
 }

@@ -1,6 +1,8 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph.Models;
 using Microsoft.SemanticKernel.ChatCompletion;
 using NSubstitute;
@@ -16,6 +18,8 @@ public class EmailTypeTests
     private readonly IAiArntIvanService _aiArntIvanService;
     private readonly IAiPluginTestService _aiPluginTestService;
     private readonly IArchiveService _archiveService;
+    private readonly IGraphService _graphService;
+    private readonly IHostEnvironment _hostEnvironment;
 
     private readonly EmailTypeService _emailTypeService;
     
@@ -24,18 +28,24 @@ public class EmailTypeTests
         _aiArntIvanService = Substitute.For<IAiArntIvanService>();
         _aiPluginTestService = Substitute.For<IAiPluginTestService>();
         _archiveService = Substitute.For<IArchiveService>();
+        _graphService = Substitute.For<IGraphService>();
+        _hostEnvironment = Substitute.For<IHostEnvironment>();
+        
+        var logger = Substitute.For<ILogger<EmailTypeService>>();
+        var serviceProvider = Substitute.For<IServiceProvider>();
         
         IConfiguration configuration = new ConfigurationBuilder()
             .AddJsonFile("appsettings.json")
             .Build();
         
-        var serviceProvider = Substitute.For<IServiceProvider>();
         serviceProvider.GetService(typeof(IAiArntIvanService)).Returns(_aiArntIvanService);
         serviceProvider.GetService(typeof(IAiPluginTestService)).Returns(_aiPluginTestService);
         serviceProvider.GetService(typeof(IArchiveService)).Returns(_archiveService);
         serviceProvider.GetService(typeof(IConfiguration)).Returns(configuration);
+        serviceProvider.GetService(typeof(IGraphService)).Returns(_graphService);
+        serviceProvider.GetService(typeof(IHostEnvironment)).Returns(_hostEnvironment);
         
-        _emailTypeService = new EmailTypeService(serviceProvider);
+        _emailTypeService = new EmailTypeService(logger, serviceProvider);
     }
     
     [Fact]
