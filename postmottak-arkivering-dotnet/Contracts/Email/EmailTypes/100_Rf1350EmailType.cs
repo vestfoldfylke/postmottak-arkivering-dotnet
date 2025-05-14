@@ -295,30 +295,30 @@ public partial class Rf1350EmailType : IEmailType
             
             var documentTitle = "RF13.50 - Søknad -";
             var epostInnDocumentCategory = _epostInnDocumentCategory.Replace("recno:", "");
-            var lameDocuments = activeCase["Documents"]!.AsArray();
-            var lameDocument = lameDocuments.FirstOrDefault(d => d!["DocumentTitle"]!.ToString().StartsWith(documentTitle, StringComparison.OrdinalIgnoreCase) && d["Category"]!["Recno"]!.ToString() == epostInnDocumentCategory);
-            if (lameDocument is null)
+            var caseDocuments = activeCase["Documents"]!.AsArray();
+            var caseDocument = caseDocuments.FirstOrDefault(d => d!["DocumentTitle"]!.ToString().StartsWith(documentTitle, StringComparison.OrdinalIgnoreCase) && d["Category"]!["Recno"]!.ToString() == epostInnDocumentCategory);
+            if (caseDocument is null)
             {
                 throw new InvalidOperationException($"No document that starts with title {documentTitle} found on caseNumber {flowStatus.Archive.CaseNumber}");
             }
             
             var documents = await _archiveService.GetDocuments(new
             {
-                DocumentNumber = lameDocument!["DocumentNumber"]!.ToString()
+                DocumentNumber = caseDocument!["DocumentNumber"]!.ToString()
             });
             
             var soknadDocument = documents.FirstOrDefault();
             if (soknadDocument?["Contacts"] is null)
             {
                 flowStatus.SendToArkivarerForHandling = true;
-                throw new InvalidOperationException($"No lame document or Contacts found for the given document number {lameDocument!["DocumentNumber"]}");
+                throw new InvalidOperationException($"No lame document or Contacts found for the given document number {caseDocument!["DocumentNumber"]}");
             }
 
             flowStatus.Archive.SoknadSender = soknadDocument["Contacts"]!.AsArray().FirstOrDefault(c => c!["Role"]!.ToString() == "Avsender");
             if (flowStatus.Archive.SoknadSender?["ReferenceNumber"] is null)
             {
                 flowStatus.SendToArkivarerForHandling = true;
-                throw new InvalidOperationException($"No sender or ReferenceNumber found for the given document number {lameDocument!["DocumentNumber"]}");
+                throw new InvalidOperationException($"No sender or ReferenceNumber found for the given document number {caseDocument!["DocumentNumber"]}");
             }
         }
         
