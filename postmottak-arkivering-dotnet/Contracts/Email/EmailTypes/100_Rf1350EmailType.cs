@@ -105,14 +105,14 @@ public partial class Rf1350EmailType : IEmailType
         {
             throw new InvalidOperationException("Result is null. Somethings wrong");
         }
-        
-        if (string.IsNullOrEmpty(_result.ProjectOwner))
-        {
-            throw new MissingFieldException("Project owner is missing");
-        }
 
         if (_result.Type.Equals(OverforingAvMottattSoknad, StringComparison.OrdinalIgnoreCase))
         {
+            if (string.IsNullOrEmpty(_result.ProjectOwner))
+            {
+                throw new MissingFieldException("Project owner is missing");
+            }
+            
             return await HandleOverforingAvMottattSoknad(flowStatus);
         }
         
@@ -123,6 +123,11 @@ public partial class Rf1350EmailType : IEmailType
         
         if (_result.Type.Equals(AnmodningOmSluttutbetaling, StringComparison.OrdinalIgnoreCase))
         {
+            if (string.IsNullOrEmpty(_result.ProjectOwner))
+            {
+                throw new MissingFieldException("Project owner is missing");
+            }
+            
             return await HandleAnmodningOmSluttutbetaling(flowStatus);
         }
         
@@ -289,8 +294,9 @@ public partial class Rf1350EmailType : IEmailType
             flowStatus.Archive.CaseNumber = activeCase["CaseNumber"]!.ToString();
             
             var documentTitle = "RF13.50 - Søknad -";
+            var epostInnDocumentCategory = _epostInnDocumentCategory.Replace("recno:", "");
             var lameDocuments = activeCase["Documents"]!.AsArray();
-            var lameDocument = lameDocuments.FirstOrDefault(d => d!["DocumentTitle"]!.ToString().StartsWith(documentTitle, StringComparison.OrdinalIgnoreCase) && d["Category"]!["Recno"]!.ToString() == _epostInnDocumentCategory);
+            var lameDocument = lameDocuments.FirstOrDefault(d => d!["DocumentTitle"]!.ToString().StartsWith(documentTitle, StringComparison.OrdinalIgnoreCase) && d["Category"]!["Recno"]!.ToString() == epostInnDocumentCategory);
             if (lameDocument is null)
             {
                 throw new InvalidOperationException($"No document that starts with title {documentTitle} found on caseNumber {flowStatus.Archive.CaseNumber}");
