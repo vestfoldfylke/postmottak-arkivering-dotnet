@@ -22,7 +22,7 @@ public class EmailTypeService : IEmailTypeService
 
     private readonly List<Type> _emailTypes;
     
-    private const string EmailTypeNamespace = "postmottak_arkivering_dotnet.Contracts.Email.EmailTypes";
+    private const string EmailTypeNamespace = "postmottak_arkivering_dotnet.EmailTypes";
     
     public EmailTypeService(ILogger<EmailTypeService> logger, IServiceProvider serviceProvider)
     {

@@ -7,11 +7,13 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Graph.Models;
+using postmottak_arkivering_dotnet.Contracts;
 using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
+using postmottak_arkivering_dotnet.Contracts.Email;
 using postmottak_arkivering_dotnet.Services;
 using postmottak_arkivering_dotnet.Services.Ai;
 
-namespace postmottak_arkivering_dotnet.Contracts.Email.EmailTypes;
+namespace postmottak_arkivering_dotnet.EmailTypes;
 
 public class LoyvegarantiEmailType : IEmailType
 {

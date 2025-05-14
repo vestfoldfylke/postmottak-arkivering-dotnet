@@ -9,11 +9,13 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph.Models;
+using postmottak_arkivering_dotnet.Contracts;
 using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
+using postmottak_arkivering_dotnet.Contracts.Email;
 using postmottak_arkivering_dotnet.Services;
 using postmottak_arkivering_dotnet.Services.Ai;
 
-namespace postmottak_arkivering_dotnet.Contracts.Email.EmailTypes;
+namespace postmottak_arkivering_dotnet.EmailTypes;
 
 public partial class Rf1350EmailType : IEmailType
 {

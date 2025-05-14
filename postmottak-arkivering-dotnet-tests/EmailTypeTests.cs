@@ -5,7 +5,7 @@ using Microsoft.Graph.Models;
 using Microsoft.SemanticKernel.ChatCompletion;
 using NSubstitute;
 using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
-using postmottak_arkivering_dotnet.Contracts.Email.EmailTypes;
+using postmottak_arkivering_dotnet.EmailTypes;
 using postmottak_arkivering_dotnet.Services;
 using postmottak_arkivering_dotnet.Services.Ai;
 
