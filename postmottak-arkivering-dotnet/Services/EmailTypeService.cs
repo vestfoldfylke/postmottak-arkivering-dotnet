@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph.Models;
 using postmottak_arkivering_dotnet.Contracts.Email;
 
@@ -16,14 +17,16 @@ public interface IEmailTypeService
 
 public class EmailTypeService : IEmailTypeService
 {
+    private readonly ILogger<EmailTypeService> _logger;
     private readonly IServiceProvider _serviceProvider;
 
     private readonly List<Type> _emailTypes;
     
     private const string EmailTypeNamespace = "postmottak_arkivering_dotnet.Contracts.Email.EmailTypes";
     
-    public EmailTypeService(IServiceProvider serviceProvider)
+    public EmailTypeService(ILogger<EmailTypeService> logger, IServiceProvider serviceProvider)
     {
+        _logger = logger;
         _serviceProvider = serviceProvider;
 
         _emailTypes = Assembly.GetExecutingAssembly().GetTypes()
@@ -38,16 +41,20 @@ public class EmailTypeService : IEmailTypeService
             return null;
         }
         
+        _logger.LogInformation("Determining email type for MessageId {MessageId}", message.Id);
         foreach (var emailType in _emailTypes)
         {
             var emailTypeInstance = CreateEmailTypeInstance(emailType);
 
+            _logger.LogDebug("Starting {EmailType}.MatchCriteria for MessageId {MessageId}", emailType.Name, message.Id);
             if (await emailTypeInstance.MatchCriteria(message))
             {
+                _logger.LogInformation("Matched {EmailType} for MessageId {MessageId}", emailType.Name, message.Id);
                 return emailTypeInstance;
             }
         }
 
+        _logger.LogInformation("No matching email type found for MessageId {MessageId}", message.Subject);
         return null;
     }
     

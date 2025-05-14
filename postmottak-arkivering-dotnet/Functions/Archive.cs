@@ -78,79 +78,15 @@ public class Archive
     [OpenApiResponseWithBody(HttpStatusCode.OK, contentType: "application/json", typeof(ArchiveOkResponse), Description = "Executed successfully")]
     public async Task<IActionResult> ArchiveEmails([HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequest req)
     {
-        var mailMessages = await _graphService.GetMailMessages(_postboxUpn, _mailFolderInboxId);
-        if (mailMessages.Count == 0)
-        {
-            _logger.LogInformation("No messages found in Inbox folder");
-            return new OkResult();
-        }
+        ArchiveOkResponse response = await GetAndHandleEmails();
 
-        var mailBlobs = await _blobService.ListBlobs(_blobStorageQueueName);
-
-        List<(IEmailType, FlowStatus)> messagesToHandle = [];
-        List<Message> unknownMessages = [];
-
-        foreach (var message in mailMessages)
-        {
-            BlobItem? blobItem = mailBlobs.Find(blob => blob.Name.Contains(message.Id!));
-
-            if (blobItem is not null)
-            { 
-                var flowStatus = await _blobService.DownloadBlobContent<FlowStatus?>(blobItem.Name);
-                if (flowStatus is null)
-                {
-                     _logger.LogError("Failed to download blob content for BlobName {BlobName}", blobItem.Name);
-                     continue;
-                }
-
-                if (flowStatus.SendToArkivarerForHandling)
-                {
-                    // TODO: Remove with time
-                    _logger.LogWarning("Hit kommer vi absolutt aldri! MessageId {MessageId} is unhandelable. Send to arkivarer for handling", message.Id);
-                    continue;
-                }
-
-                if (flowStatus.RetryAfter is not null && flowStatus.RetryAfter > DateTime.UtcNow)
-                {
-                     _logger.LogInformation("MessageId {MessageId} has retry after {RetryAfter} and will not be handled now", message.Id, flowStatus.RetryAfter);
-                     continue;
-                }
-                
-                IEmailType existingEmailType = _emailTypeService.CreateEmailTypeInstance(flowStatus.Type);
-
-                messagesToHandle.Add((existingEmailType, flowStatus));
-                continue;
-            }
-            
-            IEmailType? emailType = await _emailTypeService.GetEmailType(message);
-            if (emailType is null)
-            {
-                unknownMessages.Add(message);
-                continue;
-            }
-
-            messagesToHandle.Add((emailType, new FlowStatus
-            {
-                Type = emailType.GetType().Name,
-                Message = message
-            }));
-        }
-        
-        await HandleUnknownMessages(unknownMessages);
-        
-        await HandleKnownMessageTypes(messagesToHandle);
-
-        var okResponse = new ArchiveOkResponse
-        {
-            HandledMessages = messagesToHandle.Select(message => new HandledMessage
-            {
-                MessageId = message.Item2.Message.Id,
-                Type = message.Item2.Type
-            }).ToList(),
-            UnhandledMessageIds = unknownMessages.Select(message => message.Id).ToList()
-        };
-
-        return new OkObjectResult(okResponse);
+        return new OkObjectResult(response);
+    }
+    
+    [Function("GetAndHandleEmailsTimer")]
+    public async Task GetAndHandleEmailsTrigger([TimerTrigger("0 0 */1 * * *")] TimerInfo myTimer)
+    {
+        await GetAndHandleEmails();
     }
     
     [Function("ListFolders")]
@@ -210,6 +146,86 @@ public class Archive
                 return new BadRequestObjectResult("Unknown agent");
         }
     }
+
+    private async Task<ArchiveOkResponse> GetAndHandleEmails()
+    {
+        var mailMessages = await _graphService.GetMailMessages(_postboxUpn, _mailFolderInboxId);
+        if (mailMessages.Count == 0)
+        {
+            _logger.LogInformation("No messages found in Inbox folder");
+            return new ArchiveOkResponse();
+        }
+
+        var mailBlobs = await _blobService.ListBlobs(_blobStorageQueueName);
+
+        List<(IEmailType, FlowStatus)> messagesToHandle = [];
+        List<Message> unknownMessages = [];
+
+        foreach (var message in mailMessages)
+        {
+            BlobItem? blobItem = mailBlobs.Find(blob => blob.Name.Contains(message.Id!));
+
+            if (blobItem is not null)
+            { 
+                var flowStatus = await _blobService.DownloadBlobContent<FlowStatus?>(blobItem.Name);
+                if (flowStatus is null)
+                {
+                     _logger.LogError("Failed to download blob content for BlobName {BlobName}. Blob might be hold on (be strong) to longer than needed. Check blob storage container retention", blobItem.Name);
+                     continue;
+                }
+
+                if (flowStatus.SendToArkivarerForHandling)
+                {
+                    // TODO: Remove with time
+                    _logger.LogWarning("Hit kommer vi absolutt aldri! MessageId {MessageId} is unhandelable. Send to arkivarer for handling", message.Id);
+                    continue;
+                }
+
+                if (flowStatus.RetryAfter is not null && flowStatus.RetryAfter > DateTime.UtcNow)
+                {
+                     _logger.LogInformation("MessageId {MessageId} has retry after {RetryAfter} and will not be handled now", message.Id, flowStatus.RetryAfter);
+                     continue;
+                }
+                
+                IEmailType existingEmailType = _emailTypeService.CreateEmailTypeInstance(flowStatus.Type);
+
+                messagesToHandle.Add((existingEmailType, flowStatus));
+                continue;
+            }
+            
+            IEmailType? emailType = await _emailTypeService.GetEmailType(message);
+            if (emailType is null)
+            {
+                unknownMessages.Add(message);
+                continue;
+            }
+
+            messagesToHandle.Add((emailType, new FlowStatus
+            {
+                Type = emailType.GetType().Name,
+                Message = message
+            }));
+        }
+        
+        await HandleUnknownMessages(unknownMessages);
+        
+        await HandleKnownMessageTypes(messagesToHandle);
+
+        var okResponse = new ArchiveOkResponse
+        {
+            HandledMessages = messagesToHandle.Select(message => new HandledMessage
+            {
+                MessageId = message.Item2.Message.Id,
+                Type = message.Item2.Type
+            }).ToList(),
+            UnhandledMessageIds = unknownMessages.Select(message => message.Id).ToList()
+        };
+
+        _logger.LogInformation("Handled {HandledMessageCount} messages. {UnknownMessageCount} messages are unhandled",
+            messagesToHandle.Count, unknownMessages.Count);
+
+        return okResponse;
+    }
     
     [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
     private async Task HandleKnownMessageTypes(List<(IEmailType, FlowStatus)> messagesToHandle)
@@ -221,7 +237,7 @@ public class Archive
             {
                 try
                 {
-                    _logger.LogInformation("Logger noe dritt om {MessageId} med type {EmailType}");
+                    _logger.LogInformation("Starting {EmailType}.HandleMessage for MessageId {MessageId}");
                     var handledMessage = await emailType.HandleMessage(flowStatus);
                     var funFact = emailType.IncludeFunFact ? await _aiArntIvanService.FunFact() : string.Empty;
                     var funFactMessage = emailType.IncludeFunFact && !string.IsNullOrEmpty(funFact)
@@ -251,10 +267,13 @@ public class Archive
                     await RemoveFlowStatusBlob(flowStatus.Type, flowStatus.Message.Id!);
                     
                     await _statisticsService.InsertStatistics(handledMessage, flowStatus.Message.Id!, flowStatus.Type, flowStatus.Message.From?.EmailAddress?.Address);
+                    
+                    _logger.LogInformation("Finished {EmailType}.HandleMessage for MessageId {MessageId} with result {HandledMessage}",
+                        flowStatus.Type, flowStatus.Message.Id, handledMessage);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error handling message with Id {MessageId}");
+                    _logger.LogError(ex, "Error handling MessageId {MessageId} with {EmailType}");
                     flowStatus.ErrorMessage = ex.Message;
                     flowStatus.ErrorStack = ex.StackTrace;
                     flowStatus.RunCount++;
@@ -284,35 +303,44 @@ public class Archive
     {
         foreach (var message in messages)
         {
-            _logger.LogWarning("MessageId {MessageId} is of an unknown type and will be moved to manual handling folder", message.Id);
+            _logger.LogInformation("MessageId {MessageId} is of an unknown type and will be moved to manual handling folder", message.Id);
             
             await _statisticsService.InsertStatistics("Email with unknown type", message.Id!, "Unknown", message.From?.EmailAddress?.Address);
             
-            Message? postMoveMessage =
-                await _graphService.MoveMailMessage(_postboxUpn, message.Id!, _mailFolderManualHandlingId);
-            if (postMoveMessage is null)
-            {
-                continue;
-            }
-            
-            _logger.LogInformation("MessageId {MessageId} successfully moved to manual handling folder", message.Id);
+            await _graphService.MoveMailMessage(_postboxUpn, message.Id!, _mailFolderManualHandlingId);
         }
     }
     
     private async Task UpsertFlowStatusBlob(string messageId, FlowStatus flowStatus, string? folder = null)
     {
-        folder ??= _blobStorageQueueName;
-        await _blobService.UploadBlob($"{folder}/{flowStatus.Type}/{messageId}-flowstatus.json",
-            JsonSerializer.Serialize(flowStatus, new JsonSerializerOptions
-            {
-                IndentSize = 2,
-                WriteIndented = true
-            }));
+        try
+        {
+            folder ??= _blobStorageQueueName;
+            await _blobService.UploadBlob($"{folder}/{flowStatus.Type}/{messageId}-flowstatus.json",
+                JsonSerializer.Serialize(flowStatus, new JsonSerializerOptions
+                {
+                    IndentSize = 2,
+                    WriteIndented = true
+                }));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to serialize flowStatus or upload blob for MessageId {MessageId}. Things might happen multiple times", messageId);
+        }
     }
     
     private async Task RemoveFlowStatusBlob(string flowType, string messageId, string? folder = null)
     {
         folder ??= _blobStorageQueueName;
-        await _blobService.RemoveBlobs($"{folder}/{flowType}/{messageId}-flowstatus.json");
+        var blobPath = $"{folder}/{flowType}/{messageId}-flowstatus.json";
+        
+        try
+        {
+            await _blobService.RemoveBlobs(blobPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove blob with BlobPath {BlobPath}. Blob might be hold on (be strong) to longer than needed. Check blob storage container retention", blobPath);
+        }
     }
 }

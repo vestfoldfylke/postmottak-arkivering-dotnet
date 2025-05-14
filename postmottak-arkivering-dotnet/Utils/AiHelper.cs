@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
@@ -8,7 +9,10 @@ using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
+using OpenAI.Chat;
 using Serilog;
+using Serilog.Context;
+using ChatMessageContent = Microsoft.SemanticKernel.ChatMessageContent;
 
 namespace postmottak_arkivering_dotnet.Utils;
 
@@ -42,10 +46,20 @@ internal static class AiHelper
 
     internal static ChatCompletionAgent CreateNewAgent(IKernelBuilder kernelBuilder, string agentName, string agentInstructions, Type responseFormat)
     {
+        if (ConfigurationManager is null)
+        {
+            throw new NullReferenceException("ConfigurationManager is not set");
+        }
+        
+        int maxCompletionTokens = int.TryParse(ConfigurationManager["AzureOpenAI_MaxCompletionTokens"], out int maxTokens)
+            ? maxTokens
+            : 10000;
+        
         Kernel kernel = kernelBuilder.Build();
         
         var promptExecutionSettings = new AzureOpenAIPromptExecutionSettings
         {
+            MaxTokens = maxCompletionTokens,
             FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(),
             Store = false,
             ResponseFormat = responseFormat,
@@ -77,22 +91,32 @@ internal static class AiHelper
         return JsonSerializer.Deserialize<T>(content) ?? throw new InvalidOperationException($"Failed to deserialize AI response into type {typeof(T).Name}");
     }
     
+    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
     internal static async Task<ChatHistory> InvokeAgent(this ChatCompletionAgent agent, string prompt, string responseType, ChatHistory? chatHistory = null)
     {
-        Log.Logger.Debug("{AgentName} of type {ResponseType} with question: {Prompt}", agent.Name, responseType, prompt);
-        
-        var history = chatHistory ?? [];
-
-        AgentThread agentThread = new ChatHistoryAgentThread(history);
-
-        await foreach (ChatMessageContent response in agent.InvokeAsync(new ChatMessageContent(AuthorRole.User, prompt),
-                           agentThread))
+        using (GlobalLogContext.PushProperty("AgentName", agent.Name))
+        using (GlobalLogContext.PushProperty("ResponseType", responseType))
         {
-            var resultContent = response.Content ?? string.Empty;
-           
-            Log.Logger.Debug("{AgentName} of type {ResponseType} with answer: {Result}", agent.Name, responseType, resultContent);
+            Log.Logger.Information("Asking {AgentName} for response type {ResponseType}");
+            Log.Logger.Debug("{Prompt}", prompt);
+
+            var history = chatHistory ?? [];
+
+            AgentThread agentThread = new ChatHistoryAgentThread(history);
+
+            await foreach (ChatMessageContent response in agent.InvokeAsync(
+                               new ChatMessageContent(AuthorRole.User, prompt),
+                               agentThread))
+            {
+                var resultContent = response.Content ?? string.Empty;
+
+                ChatTokenUsage? usage = (ChatTokenUsage?)response.Metadata?["Usage"];
+                Log.Logger.Information("Got {ResponseType} response from {AgentName}. InputTokenCount: {InputTokenCount}. OutputTokenCount: {OutputTokenCount}",
+                    responseType, agent.Name, usage?.InputTokenCount, usage?.OutputTokenCount);
+                Log.Logger.Debug("{Result}", resultContent);
+            }
+
+            return history;
         }
-        
-        return history;
     }
 }
