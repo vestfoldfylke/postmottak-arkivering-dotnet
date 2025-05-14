@@ -75,8 +75,7 @@ public class Archive
     [Function("ArchiveEmails")]
     [OpenApiOperation(operationId: "ArchiveEmails")]
     [OpenApiSecurity("Authentication", SecuritySchemeType.ApiKey, Name = "X-Functions-Key", In = OpenApiSecurityLocationType.Header)]
-    [OpenApiResponseWithoutBody(HttpStatusCode.OK, Description = "Executed successfully")]
-    [OpenApiResponseWithBody(HttpStatusCode.InternalServerError, "application/json", typeof(ErrorResponse), Description = "Error occured")]
+    [OpenApiResponseWithBody(HttpStatusCode.OK, contentType: "application/json", typeof(ArchiveOkResponse), Description = "Executed successfully")]
     public async Task<IActionResult> ArchiveEmails([HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequest req)
     {
         var mailMessages = await _graphService.GetMailMessages(_postboxUpn, _mailFolderInboxId);
@@ -140,8 +139,18 @@ public class Archive
         await HandleUnknownMessages(unknownMessages);
         
         await HandleKnownMessageTypes(messagesToHandle);
-        
-        return new OkResult();
+
+        var okResponse = new ArchiveOkResponse
+        {
+            HandledMessages = messagesToHandle.Select(message => new HandledMessage
+            {
+                MessageId = message.Item2.Message.Id,
+                Type = message.Item2.Type
+            }).ToList(),
+            UnhandledMessageIds = unknownMessages.Select(message => message.Id).ToList()
+        };
+
+        return new OkObjectResult(okResponse);
     }
     
     [Function("ListFolders")]
