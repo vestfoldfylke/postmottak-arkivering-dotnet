@@ -66,6 +66,7 @@ public class PengetransportenEmailType : IEmailType
 
     private PengetransportenChatResult? _result;
     
+    public bool Enabled => true;
     public bool IncludeFunFact => true;
     public string Title => "Pengetransporten";
 
@@ -116,7 +117,8 @@ public class PengetransportenEmailType : IEmailType
 
         List<string> toRecipients =
         [
-            "testarkivering@vestfoldfylke.no"
+            "rune.moskvil.lyngas@vestfoldfylke.no",
+            "jorgen.thorsnes@vestfoldfylke.no"
         ];
         
         string forwardMessage = @$"Denne e-posten er håndtert av KI og videresendt på begrunnelse: {_result.Description}.

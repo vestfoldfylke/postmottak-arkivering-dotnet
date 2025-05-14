@@ -30,7 +30,7 @@ public class EmailTypeService : IEmailTypeService
         _serviceProvider = serviceProvider;
 
         _emailTypes = Assembly.GetExecutingAssembly().GetTypes()
-            .Where(t => typeof(IEmailType).IsAssignableFrom(t) && !t.IsAbstract)
+            .Where(t => typeof(IEmailType).IsAssignableFrom(t) && !t.IsAbstract && CreateEmailTypeInstance(t).Enabled)
             .ToList();
     }
     

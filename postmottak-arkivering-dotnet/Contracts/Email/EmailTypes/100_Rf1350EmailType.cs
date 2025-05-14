@@ -44,6 +44,7 @@ public partial class Rf1350EmailType : IEmailType
 
     private Rf1350ChatResult? _result;
 
+    public bool Enabled => true;
     public bool IncludeFunFact => true;
     public string Title => "RF13.50";
 
