@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph.Models;
 using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
 using postmottak_arkivering_dotnet.Services;
@@ -18,6 +20,7 @@ public partial class Rf1350EmailType : IEmailType
     private readonly IAiArntIvanService _aiArntIvanService;
     private readonly IArchiveService _archiveService;
     private readonly IGraphService _graphService;
+    private readonly ILogger<Rf1350EmailType> _logger;
     
     private const string FromAddress = "ikkesvar@regionalforvaltning.no";
 
@@ -33,8 +36,9 @@ public partial class Rf1350EmailType : IEmailType
     
     private readonly string _epostInnDocumentCategory;
     private readonly string _postmottakUpn;
+    private readonly string? _testProjectNumber;
     
-    private const string AnmodningOmSluttutbetaling = "Anmodning om Sluttutbetaling";
+    private const string AnmodningOmUtbetaling = "Anmodning om utbetaling";
     private const string AutomatiskKvitteringPaInnsendtSoknad = "Automatisk kvittering på innsendt søknad";
     private const string OverforingAvMottattSoknad = "Overføring av mottatt søknad";
 
@@ -45,6 +49,7 @@ public partial class Rf1350EmailType : IEmailType
 
     public Rf1350EmailType(IServiceProvider serviceProvider)
     {
+        _logger = serviceProvider.GetService<ILogger<Rf1350EmailType>>()!;
         _aiArntIvanService = serviceProvider.GetService<IAiArntIvanService>()!;
         _archiveService = serviceProvider.GetService<IArchiveService>()!;
         _graphService = serviceProvider.GetService<IGraphService>()!;
@@ -52,6 +57,8 @@ public partial class Rf1350EmailType : IEmailType
         IConfiguration configuration = serviceProvider.GetRequiredService<IConfiguration>();
         _epostInnDocumentCategory = configuration["ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN"] ?? throw new NullReferenceException("ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN cannot be null");
         _postmottakUpn = configuration["Postmottak_UPN"] ?? throw new NullReferenceException("Postmottak_UPN cannot be null");
+        
+        _testProjectNumber = configuration["EmailType_RF13.50_Test_ProjectNumber"];
     }
     
     public async Task<bool> MatchCriteria(Message message)
@@ -74,18 +81,14 @@ public partial class Rf1350EmailType : IEmailType
         {
             return false;
         }
-        
-        if (!string.IsNullOrEmpty(result.ProjectNumber) && !RegexProjectNumber().IsMatch(result.ProjectNumber))
-        {
-            return false;
-        }
-        
-        if (!string.IsNullOrEmpty(result.ReferenceNumber) && !RegexReferenceNumber().IsMatch(result.ReferenceNumber))
-        {
-            return false;
-        }
 
         _result = result;
+        
+        if (!string.IsNullOrEmpty(_testProjectNumber) && !string.IsNullOrEmpty(_result.ProjectNumber))
+        {
+            _logger.LogWarning("Test project number {_testProjectNumber} is set. Project number found by Arnt Ivan will be overridden for test purposes", _testProjectNumber);
+            _result.ProjectNumber = _testProjectNumber;
+        }
 
         return true;
     }
@@ -108,11 +111,6 @@ public partial class Rf1350EmailType : IEmailType
 
         if (_result.Type.Equals(OverforingAvMottattSoknad, StringComparison.OrdinalIgnoreCase))
         {
-            if (string.IsNullOrEmpty(_result.ProjectOwner))
-            {
-                throw new MissingFieldException("Project owner is missing");
-            }
-            
             return await HandleOverforingAvMottattSoknad(flowStatus);
         }
         
@@ -121,13 +119,8 @@ public partial class Rf1350EmailType : IEmailType
             return await HandleAutomatiskKvitteringPaInnsendtSoknad(flowStatus);
         }
         
-        if (_result.Type.Equals(AnmodningOmSluttutbetaling, StringComparison.OrdinalIgnoreCase))
+        if (_result.Type.Equals(AnmodningOmUtbetaling, StringComparison.OrdinalIgnoreCase))
         {
-            if (string.IsNullOrEmpty(_result.ProjectOwner))
-            {
-                throw new MissingFieldException("Project owner is missing");
-            }
-            
             return await HandleAnmodningOmSluttutbetaling(flowStatus);
         }
         
@@ -136,9 +129,42 @@ public partial class Rf1350EmailType : IEmailType
     
     private async Task<string> HandleOverforingAvMottattSoknad(FlowStatus flowStatus)
     {
-        if (string.IsNullOrEmpty(_result!.OrganizationNumber))
+        if (!string.IsNullOrEmpty(_result!.ProjectNumber) && !RegexProjectNumber().IsMatch(_result.ProjectNumber))
         {
-            throw new InvalidOperationException("Organization number is missing");
+            flowStatus.SendToArkivarerForHandling = true;
+            throw new InvalidOperationException($"Project number {_result.ProjectNumber} is not valid");
+        }
+        
+        if (!string.IsNullOrEmpty(_result.ReferenceNumber) && !RegexReferenceNumber().IsMatch(_result.ReferenceNumber))
+        {
+            flowStatus.SendToArkivarerForHandling = true;
+            throw new InvalidOperationException($"Reference number {_result.ReferenceNumber} is not valid");
+        }
+        
+        if (string.IsNullOrEmpty(_result!.ProjectOwner))
+        {
+            flowStatus.SendToArkivarerForHandling = true;
+            throw new MissingFieldException("Project owner is missing");
+        }
+        
+        if (!_result!.ValidOrganizationNumber())
+        {
+            flowStatus.SendToArkivarerForHandling = true;
+            throw new InvalidOperationException("Organization number is missing or invalid");
+        }
+        
+        if (flowStatus.Archive.SyncEnterprise is null)
+        {
+            try
+            {
+                flowStatus.Archive.SyncEnterprise =
+                    (await _archiveService.SyncEnterprise(_result.OrganizationNumber.ToString()))["enterprise"];
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("404"))
+            {
+                flowStatus.SendToArkivarerForHandling = true;
+                throw;
+            }
         }
         
         if (string.IsNullOrEmpty(flowStatus.Archive.CaseNumber))
@@ -167,110 +193,21 @@ public partial class Rf1350EmailType : IEmailType
 
             if (activeCase is null)
             {
-                var responsiblePersonEmail = activeProject["ResponsiblePerson"]!["Email"]!.ToString();
-                if (string.IsNullOrEmpty(responsiblePersonEmail))
-                {
-                    throw new MissingFieldException($"Responsible person email is missing from ProjectNumber {_result.ProjectNumber}");
-                }
-                
-                activeCase = await _archiveService.CreateCase(new
-                {
-                    ArchiveCodes = new object[]
-                    {
-                        new {
-                            ArchiveCode = "243",
-                            ArchiveType = "FELLESKLASSE PRINSIPP",
-                            Sort = 1
-                        },
-                        new {
-                            ArchiveCode = "U01",
-                            ArchiveType = "FAGKLASSE PRINSIPP",
-                            Sort = 2
-                        }
-                    },
-                    Project = _result!.ProjectNumber,
-                    ResponsiblePersonEmail = responsiblePersonEmail,
-                    Status = "B",
-                    Title = $"RF13.50 - Søknad - {_result.ProjectName} - {_result!.ReferenceNumber} - {_result!.ProjectOwner}"
-                });
-
-                flowStatus.Archive.CaseCreated = true;
+                activeCase = await CreateCase(flowStatus, activeProject);
             }
             
             flowStatus.Archive.CaseNumber = activeCase["CaseNumber"]!.ToString();
         }
-
-        if (flowStatus.Archive.SyncEnterprise is null)
-        {
-            var organizationNumber = _result.OrganizationNumber.Replace(" ", "");
-            flowStatus.Archive.SyncEnterprise = (await _archiveService.SyncEnterprise(organizationNumber))["enterprise"];
-        }
         
         if (string.IsNullOrEmpty(flowStatus.Archive.DocumentNumber))
         {
-            var messageBytes = await _graphService.GetMailMessageRaw(_postmottakUpn, flowStatus.Message.Id!);
-            
-            List<Attachment> mailAttachments = (bool)flowStatus.Message.HasAttachments!
-                ? await _graphService.GetMailMessageAttachments(_postmottakUpn, flowStatus.Message.Id!)
-                : [];
-            
-            List<MailAttachment> attachments = mailAttachments
-                .Where(a => a.OdataType == "#microsoft.graph.fileAttachment")
-                .Select(_graphService.GetMailAttachment)
-                .ToList();
-            
-            var payload = new
-            {
-                Archive = "Saksdokument",
-                flowStatus.Archive.CaseNumber,
-                Category = _epostInnDocumentCategory,
-                Contacts = new object[]
-                {
-                    new
-                    {
-                        ReferenceNumber = flowStatus.Archive.SyncEnterprise!["EnterpriseNumber"]!.ToString(),
-                        Role = "Avsender"
-                    }
-                },
-                DocumentDate = DateTime.Now.ToString("O"),
-                Files = new List<object>
-                {
-                    new
-                    {
-                        Format = "eml",
-                        Status = "F",
-                        Title = flowStatus.Message.Subject!,
-                        Data = messageBytes,
-                        VersionFormat = "P"
-                    }
-                },
-                ResponsiblePersonEmail = flowStatus.Archive.Project!["ResponsiblePerson"]!["Email"]!.ToString(),
-                Status = "J",
-                Title = $"RF13.50 - Søknad - {_result.ProjectName} - {_result.ReferenceNumber} - {_result.ProjectOwner}",
-            };
-            
-            attachments.ForEach(a =>
-            {
-                var (extension, versionFormat) = _archiveService.GetFileExtension(a.Name);
-                payload.Files.Add(new
-                {
-                    Format = extension,
-                    Status = "F",
-                    Title = a.Name,
-                    Data = a.Content,
-                    VersionFormat = versionFormat
-                });
-            });
-            
-            var document = await _archiveService.CreateDocument(payload);
-
-            flowStatus.Archive.DocumentNumber = document["DocumentNumber"]!.ToString();
+            await CreateDocument(flowStatus, "Søknad");
         }
 
         string caseHandle = flowStatus.Archive.CaseCreated
             ? "Sak ble også automatisk opprettet siden robåten ikke fant en eksisterende sak."
             : "Robåten fant en eksisterende sak og arkiverte dokumentet i denne.";
-        return $"Overføring av mottatt søknad er automatisk arkivert med dokumentnummer {flowStatus.Archive.DocumentNumber}. {caseHandle}.";
+        return $"Overføring av mottatt søknad er automatisk arkivert med dokumentnummer {flowStatus.Archive.DocumentNumber}. {caseHandle}";
     }
     
     private async Task<string> HandleAutomatiskKvitteringPaInnsendtSoknad(FlowStatus flowStatus)
@@ -279,7 +216,6 @@ public partial class Rf1350EmailType : IEmailType
         {
             var cases = await _archiveService.GetCases(new
             {
-                _result!.ProjectNumber,
                 Title = $"RF13.50%{_result!.ReferenceNumber}%"
             });
 
@@ -292,7 +228,7 @@ public partial class Rf1350EmailType : IEmailType
             
             flowStatus.Archive.Case = activeCase;
             flowStatus.Archive.CaseNumber = activeCase["CaseNumber"]!.ToString();
-            
+
             var documentTitle = "RF13.50 - Søknad -";
             var epostInnDocumentCategory = _epostInnDocumentCategory.Replace("recno:", "");
             var caseDocuments = activeCase["Documents"]!.AsArray();
@@ -304,21 +240,21 @@ public partial class Rf1350EmailType : IEmailType
             
             var documents = await _archiveService.GetDocuments(new
             {
-                DocumentNumber = caseDocument!["DocumentNumber"]!.ToString()
+                DocumentNumber = caseDocument["DocumentNumber"]!.ToString()
             });
             
             var soknadDocument = documents.FirstOrDefault();
             if (soknadDocument?["Contacts"] is null)
             {
                 flowStatus.SendToArkivarerForHandling = true;
-                throw new InvalidOperationException($"No lame document or Contacts found for the given document number {caseDocument!["DocumentNumber"]}");
+                throw new InvalidOperationException($"No lame document or Contacts found for the given document number {caseDocument["DocumentNumber"]}");
             }
 
             flowStatus.Archive.SoknadSender = soknadDocument["Contacts"]!.AsArray().FirstOrDefault(c => c!["Role"]!.ToString() == "Avsender");
             if (flowStatus.Archive.SoknadSender?["ReferenceNumber"] is null)
             {
                 flowStatus.SendToArkivarerForHandling = true;
-                throw new InvalidOperationException($"No sender or ReferenceNumber found for the given document number {caseDocument!["DocumentNumber"]}");
+                throw new InvalidOperationException($"No sender or ReferenceNumber found for the given document number {caseDocument["DocumentNumber"]}");
             }
         }
         
@@ -388,26 +324,186 @@ public partial class Rf1350EmailType : IEmailType
     
     private async Task<string> HandleAnmodningOmSluttutbetaling(FlowStatus flowStatus)
     {
-        /*if (string.IsNullOrEmpty(flowStatus.Archive.CaseNumber))
+        if (!string.IsNullOrEmpty(_result!.ProjectNumber) && !RegexProjectNumber().IsMatch(_result.ProjectNumber))
         {
-            var cases = await _archiveService.GetCases(new
-            {
-                caseNumber = flowStatus.Message.Subject
-            });
-
-            if (cases.Count == 0)
-            {
-                throw new InvalidOperationException("No cases found");
-            }
-
-            var caseNumber = cases.FirstOrDefault()?.AsObject()["CaseNumber"]!.ToString();
-
-            flowStatus.Archive.CaseNumber = caseNumber;
+            flowStatus.SendToArkivarerForHandling = true;
+            throw new InvalidOperationException($"Project number {_result.ProjectNumber} is not valid");
         }
         
-        return "Arkivert og greier";*/
+        if (!string.IsNullOrEmpty(_result.ReferenceNumber) && !RegexReferenceNumber().IsMatch(_result.ReferenceNumber))
+        {
+            flowStatus.SendToArkivarerForHandling = true;
+            throw new InvalidOperationException($"Reference number {_result.ReferenceNumber} is not valid");
+        }
         
-        return await Task.FromResult($"Not implemented yet for {flowStatus.Type}.");
+        if (string.IsNullOrEmpty(_result!.ProjectOwner))
+        {
+            flowStatus.SendToArkivarerForHandling = true;
+            throw new MissingFieldException("Project owner is missing");
+        }
+        
+        if (!_result!.ValidOrganizationNumber())
+        {
+            flowStatus.SendToArkivarerForHandling = true;
+            throw new InvalidOperationException("Organization number is missing or invalid");
+        }
+        
+        if (flowStatus.Archive.SyncEnterprise is null)
+        {
+            try
+            {
+                flowStatus.Archive.SyncEnterprise =
+                    (await _archiveService.SyncEnterprise(_result.OrganizationNumber.ToString()))["enterprise"];
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("404"))
+            {
+                flowStatus.SendToArkivarerForHandling = true;
+                throw;
+            }
+        }
+        
+        if (string.IsNullOrEmpty(flowStatus.Archive.CaseNumber))
+        {
+            var projects = await _archiveService.GetProjects(new
+            {
+                _result!.ProjectNumber
+            });
+
+            var activeProject = projects.FirstOrDefault();
+            
+            if (activeProject is null)
+            {
+                throw new InvalidOperationException($"No projects found for the given project number {_result.ProjectNumber}");
+            }
+            
+            flowStatus.Archive.Project = activeProject;
+            
+            var cases = await _archiveService.GetCases(new
+            {
+                _result!.ProjectNumber,
+                Title = $"RF13.50%{_result!.ReferenceNumber}%"
+            });
+
+            var activeCase = cases.FirstOrDefault(c => c is not null && _caseStatuses.Contains(c["Status"]!.ToString()));
+
+            if (activeCase is null)
+            {
+                activeCase = await CreateCase(flowStatus, activeProject);
+            }
+            
+            flowStatus.Archive.CaseNumber = activeCase["CaseNumber"]!.ToString();
+        }
+        
+        if (string.IsNullOrEmpty(flowStatus.Archive.DocumentNumber))
+        {
+            await CreateDocument(flowStatus, "Anmodning om utbetaling");
+        }
+
+        string caseHandle = flowStatus.Archive.CaseCreated
+            ? "Sak ble også automatisk opprettet siden robåten ikke fant en eksisterende sak."
+            : "Robåten fant en eksisterende sak og arkiverte dokumentet i denne.";
+        return $"Anmodning om utbetaling er automatisk arkivert med dokumentnummer {flowStatus.Archive.DocumentNumber}. {caseHandle}";
+    }
+    
+    private async Task<JsonNode> CreateCase(FlowStatus flowStatus, JsonNode activeProject)
+    {
+        if (int.TryParse(_result!.ReferenceNumber.Split('-')[0].Trim(), out var year) && year < 2024)
+        {
+            flowStatus.SendToArkivarerForHandling = true;
+            throw new InvalidOperationException($"The year {year} probably indicates that this is a case from before 2024 and can be Telemark or Vestfold. Who knows? 🤷‍♂️. Message must be handled manually by to arkivarer.");
+        }
+        
+        var responsiblePersonEmail = activeProject["ResponsiblePerson"]!["Email"]!.ToString();
+        if (string.IsNullOrEmpty(responsiblePersonEmail))
+        {
+            throw new MissingFieldException($"Responsible person email is missing from ProjectNumber {_result!.ProjectNumber}");
+        }
+                
+        var activeCase = await _archiveService.CreateCase(new
+        {
+            ArchiveCodes = new object[]
+            {
+                new {
+                    ArchiveCode = "243",
+                    ArchiveType = "FELLESKLASSE PRINSIPP",
+                    Sort = 1
+                },
+                new {
+                    ArchiveCode = "U01",
+                    ArchiveType = "FAGKLASSE PRINSIPP",
+                    Sort = 2
+                }
+            },
+            Project = _result!.ProjectNumber,
+            ResponsiblePersonEmail = responsiblePersonEmail,
+            Status = "B",
+            Title = $"RF13.50 - Søknad - {_result.ProjectName} - {_result!.ReferenceNumber} - {_result!.ProjectOwner}"
+        });
+
+        flowStatus.Archive.CaseCreated = true;
+        
+        return activeCase;
+    }
+    
+    private async Task CreateDocument(FlowStatus flowStatus, string title)
+    {
+        var messageBytes = await _graphService.GetMailMessageRaw(_postmottakUpn, flowStatus.Message.Id!);
+            
+        List<Attachment> mailAttachments = (bool)flowStatus.Message.HasAttachments!
+            ? await _graphService.GetMailMessageAttachments(_postmottakUpn, flowStatus.Message.Id!)
+            : [];
+        
+        List<MailAttachment> attachments = mailAttachments
+            .Where(a => a.OdataType == "#microsoft.graph.fileAttachment")
+            .Select(_graphService.GetMailAttachment)
+            .ToList();
+        
+        var payload = new
+        {
+            Archive = "Saksdokument",
+            flowStatus.Archive.CaseNumber,
+            Category = _epostInnDocumentCategory,
+            Contacts = new object[]
+            {
+                new
+                {
+                    ReferenceNumber = flowStatus.Archive.SyncEnterprise!["EnterpriseNumber"]!.ToString(),
+                    Role = "Avsender"
+                }
+            },
+            DocumentDate = DateTime.Now.ToString("O"),
+            Files = new List<object>
+            {
+                new
+                {
+                    Format = "eml",
+                    Status = "F",
+                    Title = flowStatus.Message.Subject!,
+                    Data = messageBytes,
+                    VersionFormat = "P"
+                }
+            },
+            ResponsiblePersonEmail = flowStatus.Archive.Project!["ResponsiblePerson"]!["Email"]!.ToString(),
+            Status = "J",
+            Title = $"RF13.50 - {title} - {_result!.ProjectName} - {_result.ReferenceNumber} - {_result.ProjectOwner}",
+        };
+        
+        attachments.ForEach(a =>
+        {
+            var (extension, versionFormat) = _archiveService.GetFileExtension(a.Name);
+            payload.Files.Add(new
+            {
+                Format = extension,
+                Status = "F",
+                Title = a.Name,
+                Data = a.Content,
+                VersionFormat = versionFormat
+            });
+        });
+        
+        var document = await _archiveService.CreateDocument(payload);
+
+        flowStatus.Archive.DocumentNumber = document["DocumentNumber"]!.ToString();
     }
 
     [GeneratedRegex(@"^(\d{2})-(\d{1,6})$")]
