@@ -34,12 +34,10 @@ public class LoyvegarantiEmailType : IEmailType
     ];
 
     private const string MatrixInsuranceReferenceNumber = "966431695";
-    private const string ResponsibleEnterpriseRecnoDev = "200157";
-    private const string ResponsibleEnterpriseRecnoProd = "200100";
 
-    private readonly string _documentCategory;
-    private readonly string _postmottakUpn;
-    private readonly string _responsibleEnterpriseRecno;
+    private readonly string _documentCategory = "";
+    private readonly string _postmottakUpn = "";
+    private readonly string _responsibleEnterpriseRecno = "";
 
     private LoyvegarantiChatResult? _result;
 
@@ -54,13 +52,17 @@ public class LoyvegarantiEmailType : IEmailType
         _graphService = serviceProvider.GetRequiredService<IGraphService>();
         
         IConfiguration configuration = serviceProvider.GetRequiredService<IConfiguration>();
-        _documentCategory = configuration["ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN"] ?? throw new NullReferenceException("ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN cannot be null");
-        _postmottakUpn = configuration["Postmottak_UPN"] ?? throw new NullReferenceException("Postmottak_UPN cannot be null");
-
-        IHostEnvironment environment = serviceProvider.GetRequiredService<IHostEnvironment>();
-        _responsibleEnterpriseRecno = environment.IsDevelopment()
-            ? ResponsibleEnterpriseRecnoDev
-            : ResponsibleEnterpriseRecnoProd;
+        
+        if (Enabled)
+        {
+            _documentCategory = configuration["ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN"] ??
+                                throw new NullReferenceException("ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN cannot be null");
+            _postmottakUpn = configuration["Postmottak_UPN"] ??
+                             throw new NullReferenceException("Postmottak_UPN cannot be null");
+            _responsibleEnterpriseRecno = configuration["EmailType_Loyvegaranti_ResponsibleEnterpriseRecno"] ??
+                                          throw new NullReferenceException(
+                                              "EmailType_Loyvegaranti_ResponsibleEnterpriseRecno cannot be null");
+        }
     }
     
     public async Task<bool> MatchCriteria(Message message)

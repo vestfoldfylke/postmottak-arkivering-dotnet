@@ -39,11 +39,11 @@ public class AiArntIvanService : IAiArntIvanService
 
     public async Task<string> FunFact()
     {
-        ChatCompletionAgent agent = GetOrCreateAgent<FunFactMessage>();
+        ChatCompletionAgent agent = GetOrCreateAgent<FunFactChatResult>();
         
-        var history = await agent.InvokeAgent("Gi meg en fun fact", nameof(FunFactMessage));
+        var history = await agent.InvokeAgent("Gi meg en fun fact", nameof(FunFactChatResult));
         
-        return AiHelper.GetLatestAnswer<FunFactMessage>(history)?.Message ?? string.Empty;
+        return AiHelper.GetLatestAnswer<FunFactChatResult>(history)?.Message ?? string.Empty;
     }
 
     private ChatCompletionAgent GetOrCreateAgent<T>()

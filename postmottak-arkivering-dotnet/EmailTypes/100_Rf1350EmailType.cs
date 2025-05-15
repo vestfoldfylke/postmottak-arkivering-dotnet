@@ -35,10 +35,10 @@ public partial class Rf1350EmailType : IEmailType
         "Under behandling",
         "Reservert"
     ];
-    
-    private readonly string _epostInnDocumentCategory;
-    private readonly string _postmottakUpn;
-    private readonly string? _testProjectNumber;
+
+    private readonly string _epostInnDocumentCategory = "";
+    private readonly string _postmottakUpn = "";
+    private readonly string? _testProjectNumber = "";
     
     private const string AnmodningOmUtbetaling = "Anmodning om utbetaling";
     private const string AutomatiskKvitteringPaInnsendtSoknad = "Automatisk kvittering på innsendt søknad";
@@ -58,10 +58,15 @@ public partial class Rf1350EmailType : IEmailType
         _graphService = serviceProvider.GetService<IGraphService>()!;
         
         IConfiguration configuration = serviceProvider.GetRequiredService<IConfiguration>();
-        _epostInnDocumentCategory = configuration["ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN"] ?? throw new NullReferenceException("ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN cannot be null");
-        _postmottakUpn = configuration["Postmottak_UPN"] ?? throw new NullReferenceException("Postmottak_UPN cannot be null");
-        
-        _testProjectNumber = configuration["EmailType_RF13.50_Test_ProjectNumber"];
+        if (Enabled)
+        {
+            _epostInnDocumentCategory = configuration["ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN"] ??
+                                        throw new NullReferenceException(
+                                            "ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN cannot be null");
+            _postmottakUpn = configuration["Postmottak_UPN"] ??
+                             throw new NullReferenceException("Postmottak_UPN cannot be null");
+            _testProjectNumber = configuration["EmailType_RF13.50_Test_ProjectNumber"];
+        }
     }
     
     public async Task<bool> MatchCriteria(Message message)

@@ -20,7 +20,7 @@ public class PengetransportenEmailType : IEmailType
     private readonly IAiArntIvanService _aiArntIvanService;
     private readonly IGraphService _graphService;
 
-    private readonly string _postmottakUpn;
+    private readonly string _postmottakUpn = "";
     private readonly string[] _subjects = [
         "Faktura",
         "Regning",
@@ -66,7 +66,7 @@ public class PengetransportenEmailType : IEmailType
         "Refund Claim"
     ];
 
-    private readonly List<string> _toRecipients;
+    private readonly List<string> _toRecipients = [];
 
     private PengetransportenChatResult? _result;
     
@@ -80,8 +80,14 @@ public class PengetransportenEmailType : IEmailType
         _graphService = serviceProvider.GetService<IGraphService>()!;
         
         var configuration = serviceProvider.GetService<IConfiguration>()!;
-        _postmottakUpn = configuration["Postmottak_UPN"] ?? throw new InvalidOperationException("Postmottak_UPN is not set in configuration");
-        _toRecipients = configuration["EmailType_Pengetransporten_Forward_Addresses"]?.Split(',').ToList() ?? throw new InvalidOperationException("EmailType_Pengetransporten_Forward_Addresses is not set in configuration");
+        if (Enabled)
+        {
+            _postmottakUpn = configuration["Postmottak_UPN"] ??
+                             throw new InvalidOperationException("Postmottak_UPN is not set in configuration");
+            _toRecipients = configuration["EmailType_Pengetransporten_Forward_Addresses"]?.Split(',').ToList() ??
+                            throw new InvalidOperationException(
+                                "EmailType_Pengetransporten_Forward_Addresses is not set in configuration");
+        }
     }
     
     public async Task<bool> MatchCriteria(Message message)

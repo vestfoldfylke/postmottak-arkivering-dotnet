@@ -19,7 +19,6 @@ public class EmailTypeTests
     private readonly IAiPluginTestService _aiPluginTestService;
     private readonly IArchiveService _archiveService;
     private readonly IGraphService _graphService;
-    private readonly IHostEnvironment _hostEnvironment;
 
     private readonly EmailTypeService _emailTypeService;
     
@@ -29,7 +28,6 @@ public class EmailTypeTests
         _aiPluginTestService = Substitute.For<IAiPluginTestService>();
         _archiveService = Substitute.For<IArchiveService>();
         _graphService = Substitute.For<IGraphService>();
-        _hostEnvironment = Substitute.For<IHostEnvironment>();
         
         var logger = Substitute.For<ILogger<EmailTypeService>>();
         var serviceProvider = Substitute.For<IServiceProvider>();
@@ -43,7 +41,6 @@ public class EmailTypeTests
         serviceProvider.GetService(typeof(IArchiveService)).Returns(_archiveService);
         serviceProvider.GetService(typeof(IConfiguration)).Returns(configuration);
         serviceProvider.GetService(typeof(IGraphService)).Returns(_graphService);
-        serviceProvider.GetService(typeof(IHostEnvironment)).Returns(_hostEnvironment);
         
         _emailTypeService = new EmailTypeService(logger, serviceProvider);
     }
@@ -69,7 +66,6 @@ public class EmailTypeTests
         Assert.Empty(_aiPluginTestService.ReceivedCalls());
         Assert.Empty(_archiveService.ReceivedCalls());
         Assert.Empty(_graphService.ReceivedCalls());
-        Assert.Single(_hostEnvironment.ReceivedCalls());
     }
     
     [Theory]
@@ -93,7 +89,7 @@ public class EmailTypeTests
         
         await _aiArntIvanService.Received(1).Ask<PengetransportenChatResult>(body);
         
-        await _aiArntIvanService.DidNotReceive().Ask<FunFactMessage>(Arg.Any<string>(), Arg.Any<ChatHistory>());
+        await _aiArntIvanService.DidNotReceive().Ask<FunFactChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
         await _aiArntIvanService.DidNotReceive().Ask<GeneralChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
         await _aiArntIvanService.DidNotReceive().Ask<InnsynChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
         await _aiArntIvanService.DidNotReceive().Ask<LoyvegarantiChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
@@ -104,7 +100,6 @@ public class EmailTypeTests
         Assert.Empty(_aiPluginTestService.ReceivedCalls());
         Assert.Empty(_archiveService.ReceivedCalls());
         Assert.Empty(_graphService.ReceivedCalls());
-        Assert.Single(_hostEnvironment.ReceivedCalls());
     }
     
     [Theory]
@@ -127,7 +122,7 @@ public class EmailTypeTests
         
         await _aiArntIvanService.Received(1).Ask<InnsynChatResult>(body);
         
-        await _aiArntIvanService.DidNotReceive().Ask<FunFactMessage>(Arg.Any<string>(), Arg.Any<ChatHistory>());
+        await _aiArntIvanService.DidNotReceive().Ask<FunFactChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
         await _aiArntIvanService.DidNotReceive().Ask<GeneralChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
         await _aiArntIvanService.DidNotReceive().Ask<LoyvegarantiChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
         await _aiArntIvanService.DidNotReceive().Ask<PengetransportenChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
@@ -138,7 +133,6 @@ public class EmailTypeTests
         Assert.Empty(_aiPluginTestService.ReceivedCalls());
         Assert.Empty(_archiveService.ReceivedCalls());
         Assert.Empty(_graphService.ReceivedCalls());
-        Assert.Single(_hostEnvironment.ReceivedCalls());
     }
     
     [Theory]
@@ -174,7 +168,7 @@ public class EmailTypeTests
         
         await _aiArntIvanService.Received(1).Ask<Rf1350ChatResult>(message.Body!.Content!);
         
-        await _aiArntIvanService.DidNotReceive().Ask<FunFactMessage>(Arg.Any<string>(), Arg.Any<ChatHistory>());
+        await _aiArntIvanService.DidNotReceive().Ask<FunFactChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
         await _aiArntIvanService.DidNotReceive().Ask<GeneralChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
         await _aiArntIvanService.DidNotReceive().Ask<InnsynChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
         await _aiArntIvanService.DidNotReceive().Ask<LoyvegarantiChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
@@ -185,7 +179,6 @@ public class EmailTypeTests
         Assert.Empty(_aiPluginTestService.ReceivedCalls());
         Assert.Empty(_archiveService.ReceivedCalls());
         Assert.Empty(_graphService.ReceivedCalls());
-        Assert.Single(_hostEnvironment.ReceivedCalls());
     }
 
     private static Message GenerateMessage(string? subject = null, string? body = null, string? fromAddress = null) =>
