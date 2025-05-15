@@ -124,7 +124,7 @@ public class ArchiveService : IArchiveService
         _authService = authService;
         _logger = logger;
         
-        var scopes = config["ARCHIVE_SCOPE"] ?? throw new NullReferenceException("Archive scope cannot be null");
+        var scopes = config["ARCHIVE_SCOPE"] ?? throw new NullReferenceException();
 
         if (string.IsNullOrEmpty(scopes))
         {
@@ -140,7 +140,7 @@ public class ArchiveService : IArchiveService
         
         _archiveClient = new HttpClient
         {
-            BaseAddress = new Uri(config["ARCHIVE_BASE_URL"] ?? throw new NullReferenceException("Archive base URL cannot be null"))
+            BaseAddress = new Uri(config["ARCHIVE_BASE_URL"] ?? throw new NullReferenceException())
         };
     }
     

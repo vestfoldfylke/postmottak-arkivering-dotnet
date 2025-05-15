@@ -82,11 +82,9 @@ public class PengetransportenEmailType : IEmailType
         var configuration = serviceProvider.GetService<IConfiguration>()!;
         if (Enabled)
         {
-            _postmottakUpn = configuration["Postmottak_UPN"] ??
-                             throw new InvalidOperationException("Postmottak_UPN is not set in configuration");
-            _toRecipients = configuration["EmailType_Pengetransporten_Forward_Addresses"]?.Split(',').ToList() ??
-                            throw new InvalidOperationException(
-                                "EmailType_Pengetransporten_Forward_Addresses is not set in configuration");
+            _postmottakUpn = configuration["POSTMOTTAK_UPN"] ?? throw new NullReferenceException();
+            _toRecipients = configuration["EMAILTYPE_PENGETRANSPORTEN_FORWARD_ADDRESSES"]?.Split(',').ToList() ??
+                            throw new NullReferenceException();
         }
     }
     

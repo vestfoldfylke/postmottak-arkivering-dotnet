@@ -60,12 +60,9 @@ public partial class Rf1350EmailType : IEmailType
         IConfiguration configuration = serviceProvider.GetRequiredService<IConfiguration>();
         if (Enabled)
         {
-            _epostInnDocumentCategory = configuration["ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN"] ??
-                                        throw new NullReferenceException(
-                                            "ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN cannot be null");
-            _postmottakUpn = configuration["Postmottak_UPN"] ??
-                             throw new NullReferenceException("Postmottak_UPN cannot be null");
-            _testProjectNumber = configuration["EmailType_RF13.50_Test_ProjectNumber"];
+            _epostInnDocumentCategory = configuration["ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN"] ?? throw new NullReferenceException();
+            _postmottakUpn = configuration["POSTMOTTAK_UPN"] ?? throw new NullReferenceException();
+            _testProjectNumber = configuration["EMAILTYPE_RF13.50_TEST_PROJECTNUMBER"];
         }
     }
     

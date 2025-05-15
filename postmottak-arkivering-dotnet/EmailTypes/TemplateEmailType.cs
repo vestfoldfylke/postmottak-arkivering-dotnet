@@ -44,13 +44,11 @@ public class TemplateEmailType : IEmailType
         var configuration = serviceProvider.GetService<IConfiguration>()!;
         if (Enabled)
         {
-            _postmottakUpn = configuration["Postmottak_UPN"] ??
-                             throw new InvalidOperationException("Postmottak_UPN is not set in configuration");
+            _postmottakUpn = configuration["POSTMOTTAK_UPN"] ?? throw new NullReferenceException();
             // TODO: Change this
-            _toRecipients = configuration["EmailType_Template_Addresses"]?.Split(',').ToList() ??
-                            throw new InvalidOperationException(
-                                "EmailType_Innsyn_Addresses is not set in configuration");
-            // TODO: Add more variables if needed
+            _toRecipients = configuration["EMAILTYPE_TEMPLATE_ADDRESSES"]?.Split(',').ToList() ??
+                            throw new NullReferenceException();
+            // TODO: Add more if needed
         }
     }
     

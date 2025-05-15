@@ -30,9 +30,9 @@ public class BlobService : IBlobService
     
     public BlobService(IConfiguration config)
     {
-        _blobServiceClient = new BlobServiceClient(config["BlobStorageConnectionString"] ?? throw new NullReferenceException());
+        _blobServiceClient = new BlobServiceClient(config["BLOB_STORAGE_CONNECTION_STRING"] ?? throw new NullReferenceException());
         
-        _containerName = config["BlobStorageContainerName"] ?? throw new NullReferenceException();
+        _containerName = config["BLOB_STORAGE_CONTAINER_NAME"] ?? throw new NullReferenceException();
     }
     
     public Task<string?> DownloadBlobContentAsString(string blobName, CancellationToken? stoppingToken = null)

@@ -55,13 +55,10 @@ public class LoyvegarantiEmailType : IEmailType
         
         if (Enabled)
         {
-            _documentCategory = configuration["ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN"] ??
-                                throw new NullReferenceException("ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN cannot be null");
-            _postmottakUpn = configuration["Postmottak_UPN"] ??
-                             throw new NullReferenceException("Postmottak_UPN cannot be null");
-            _responsibleEnterpriseRecno = configuration["EmailType_Loyvegaranti_ResponsibleEnterpriseRecno"] ??
-                                          throw new NullReferenceException(
-                                              "EmailType_Loyvegaranti_ResponsibleEnterpriseRecno cannot be null");
+            _documentCategory = configuration["ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN"] ?? throw new NullReferenceException();
+            _postmottakUpn = configuration["POSTMOTTAK_UPN"] ?? throw new NullReferenceException();
+            _responsibleEnterpriseRecno = configuration["EMAILTYPE_LOYVEGARANTI_RESPONSIBLE_ENTERPRISE_RECNO"] ??
+                                          throw new NullReferenceException();
         }
     }
     

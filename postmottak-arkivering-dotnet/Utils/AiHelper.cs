@@ -27,10 +27,10 @@ internal static class AiHelper
             throw new NullReferenceException("ConfigurationManager is not set");
         }
         
-        var azureOpenAiModelName = ConfigurationManager["AzureOpenAI_Model_Name"] ?? throw new NullReferenceException("AzureOpenAI_Model_Name missing in configuration");
-        var azureOpenAiKey = ConfigurationManager["AzureOpenAI_API_Key"] ?? throw new NullReferenceException("AzureOpenAI_API_Key missing in configuration");
-        var azureOpenAiEndpoint = ConfigurationManager["AzureOpenAI_Endpoint"] ?? throw new NullReferenceException("AzureOpenAI_Endpoint missing in configuration");
-        
+        var azureOpenAiModelName = ConfigurationManager["AZURE_OPENAI_MODEL_NAME"] ?? throw new NullReferenceException();
+        var azureOpenAiKey = ConfigurationManager["AZURE_OPENAI_API_KEY"] ?? throw new NullReferenceException();
+        var azureOpenAiEndpoint = ConfigurationManager["AZURE_OPENAI_ENDPOINT"] ?? throw new NullReferenceException();
+
         var kernelBuilder = Kernel.CreateBuilder()
             .AddAzureOpenAIChatCompletion(azureOpenAiModelName, azureOpenAiEndpoint, azureOpenAiKey);
 
@@ -51,7 +51,7 @@ internal static class AiHelper
             throw new NullReferenceException("ConfigurationManager is not set");
         }
         
-        int maxCompletionTokens = int.TryParse(ConfigurationManager["AzureOpenAI_MaxCompletionTokens"], out int maxTokens)
+        int maxCompletionTokens = int.TryParse(ConfigurationManager["AZURE_OPENAI_MAX_COMPLETION_TOKENS"], out int maxTokens)
             ? maxTokens
             : 10000;
         

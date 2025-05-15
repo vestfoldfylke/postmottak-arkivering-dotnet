@@ -26,8 +26,8 @@ public class StatisticsService : IStatisticsService
         
         _appName = configuration["AppName"] ?? throw new NullReferenceException();
         _version = configuration["Version"] ?? throw new NullReferenceException();
-        string statisticsBaseUrl = configuration["Statistics_BaseUrl"] ?? throw new NullReferenceException();
-        string statisticsKey = configuration["Statistics_Key"] ?? throw new NullReferenceException();
+        string statisticsBaseUrl = configuration["STATISTICS_BASE_URL"] ?? throw new NullReferenceException();
+        string statisticsKey = configuration["STATISTICS_KEY"] ?? throw new NullReferenceException();
         
         _httpClient = new HttpClient
         {

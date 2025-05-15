@@ -62,14 +62,14 @@ public class Archive
         _logger = logger;
         _statisticsService = statisticsService;
 
-        _blobStorageFailedName = configuration["BlobStorageFailedName"] ?? "failed";
-        _blobStorageQueueName = configuration["BlobStorageQueueName"] ?? "queue";
-        _retryIntervals = configuration["RetryIntervals"]?.Split(',').Select(int.Parse).ToArray() ?? throw new NullReferenceException();
+        _blobStorageFailedName = configuration["BLOB_STORAGE_FAILED_NAME"] ?? "failed";
+        _blobStorageQueueName = configuration["BLOB_STORAGE_QUEUE_NAME"] ?? "queue";
+        _retryIntervals = configuration["RETRY_INTERVALS"]?.Split(',').Select(int.Parse).ToArray() ?? throw new NullReferenceException();
         
-        _mailFolderInboxId = configuration["Postmottak_MailFolder_Inbox_Id"] ?? throw new NullReferenceException();
-        _mailFolderManualHandlingId = configuration["Postmottak_MailFolder_ManualHandling_Id"] ?? throw new NullReferenceException();
-        _mailFolderFinishedId = configuration["Postmottak_MailFolder_Finished_Id"] ?? throw new NullReferenceException();
-        _postboxUpn = configuration["Postmottak_UPN"] ?? throw new NullReferenceException();
+        _mailFolderInboxId = configuration["POSTMOTTAK_MAIL_FOLDER_INBOX_ID"] ?? throw new NullReferenceException();
+        _mailFolderManualHandlingId = configuration["POSTMOTTAK_MAIL_FOLDER_MANUALHANDLING_ID"] ?? throw new NullReferenceException();
+        _mailFolderFinishedId = configuration["POSTMOTTAK_MAIL_FOLDER_FINISHED_ID"] ?? throw new NullReferenceException();
+        _postboxUpn = configuration["POSTMOTTAK_UPN"] ?? throw new NullReferenceException();
     }
 
     [Function("ArchiveEmails")]
