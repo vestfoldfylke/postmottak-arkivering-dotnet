@@ -413,7 +413,7 @@ public partial class Rf1350EmailType : IEmailType
         if (int.TryParse(_result!.ReferenceNumber.Split('-')[0].Trim(), out var year) && year < 2024)
         {
             flowStatus.SendToArkivarerForHandling = true;
-            throw new InvalidOperationException($"The year {year} probably indicates that this is a case from before 2024 and can be Telemark or Vestfold. Who knows? 🤷‍♂️. Message must be handled manually by to arkivarer.");
+            throw new InvalidOperationException($"The year {year} probably indicates that this is a case from before 2024 and can be Telemark or Vestfold. Who knows? 🤷‍♂️ Message must be handled manually by to arkivarer.");
         }
         
         var responsiblePersonEmail = activeProject["ResponsiblePerson"]!["Email"]!.ToString();
@@ -440,7 +440,7 @@ public partial class Rf1350EmailType : IEmailType
             Project = _result!.ProjectNumber,
             ResponsiblePersonEmail = responsiblePersonEmail,
             Status = "B",
-            Title = $"RF13.50 - Søknad - {_result.ProjectName} - {_result!.ReferenceNumber} - {_result!.ProjectOwner}"
+            Title = $"RF13.50 - {_result.ProjectName} - {_result!.ReferenceNumber} - {_result!.ProjectOwner}"
         });
 
         flowStatus.Archive.CaseCreated = true;
