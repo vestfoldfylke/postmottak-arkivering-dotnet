@@ -24,7 +24,7 @@
         <PackageReference Include="Microsoft.Identity.Client" Version="4.70.2" />
         <PackageReference Include="Microsoft.SemanticKernel" Version="1.47.0" />
         <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.47.0" />
-        <PackageReference Include="VFK.Extensions.Logging" Version="1.0.2" />
+        <PackageReference Include="VFK.Extensions.Logging" Version="1.0.3" />
     </ItemGroup>
     <ItemGroup>
         <None Update="host.json">

@@ -118,7 +118,7 @@ public class Archive
     public async Task<IActionResult> AskArntIvan([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequest req,
         [FromBody] AiPromptRequest promptRequest)
     {
-        _logger.LogInformation("AskArntIvan function started");
+        _logger.LogInformation("AskArntIvan function started for {AgentName} with {Prompt}", promptRequest.Agent, promptRequest.Prompt);
         
         switch (promptRequest.Agent)
         {
@@ -182,7 +182,7 @@ public class Archive
                 if (flowStatus.SendToArkivarerForHandling)
                 {
                     // TODO: Remove with time
-                    _logger.LogWarning("Hit kommer vi absolutt aldri! MessageId {MessageId} is unhandelable. Send to arkivarer for handling", message.Id);
+                    _logger.LogError("Hit kommer vi absolutt aldri! MessageId {MessageId} is unhandelable. Send to arkivarer for handling", message.Id);
                     continue;
                 }
 
