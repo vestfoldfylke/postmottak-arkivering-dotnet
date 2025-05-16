@@ -46,15 +46,15 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
+    - name: 'Test Project'
+      run: dotnet test --configuration Release
+
     - name: 'Resolve Project Dependencies Using Dotnet'
       shell: bash # For Windows, use pwsh
       run: |
         pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
         dotnet build --configuration Release --output ./output
         popd
-
-    - name: 'Test Project'
-      run: dotnet test --configuration Release
 
     - name: 'Run Azure Functions Action'
       uses: Azure/functions-action@v1
