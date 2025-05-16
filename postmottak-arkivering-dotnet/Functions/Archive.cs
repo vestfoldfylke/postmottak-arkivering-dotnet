@@ -127,6 +127,11 @@ public class Archive
                 var (_, result) = await _aiArntIvanService.Ask<GeneralChatResult>(promptRequest.Prompt);
                 return new OkObjectResult(result);
             }
+            case "FunFact":
+            {
+                var result = await _aiArntIvanService.FunFact();
+                return new OkObjectResult(result);
+            }
             case "Pengetransporten":
             {
                 var (_, result) = await _aiArntIvanService.Ask<PengetransportenChatResult>(promptRequest.Prompt);
