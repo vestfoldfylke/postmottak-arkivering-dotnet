@@ -19,7 +19,6 @@ public class TemplateEmailType : IEmailType
 {
     // TODO: Remove the services you don't need
     private readonly IAiArntIvanService _aiArntIvanService;
-    private readonly IArchiveService _archiveService;
     private readonly IGraphService _graphService;
 
     private readonly string _postmottakUpn = "";
@@ -38,7 +37,6 @@ public class TemplateEmailType : IEmailType
     {
         // TODO: Remove the services you don't need
         _aiArntIvanService = serviceProvider.GetService<IAiArntIvanService>()!;
-        _archiveService = serviceProvider.GetService<IArchiveService>()!;
         _graphService = serviceProvider.GetService<IGraphService>()!;
         
         var configuration = serviceProvider.GetService<IConfiguration>()!;
