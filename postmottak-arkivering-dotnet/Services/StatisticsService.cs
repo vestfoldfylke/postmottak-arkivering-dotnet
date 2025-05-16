@@ -1,5 +1,6 @@
 using System;
 using System.Net.Http;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
@@ -24,10 +25,15 @@ public class StatisticsService : IStatisticsService
     {
         _logger = logger;
         
-        _appName = configuration["AppName"] ?? throw new NullReferenceException();
-        _version = configuration["Version"] ?? throw new NullReferenceException();
-        string statisticsBaseUrl = configuration["STATISTICS_BASE_URL"] ?? throw new NullReferenceException();
-        string statisticsKey = configuration["STATISTICS_KEY"] ?? throw new NullReferenceException();
+        _appName = configuration["AppName"]
+                   ?? Assembly.GetEntryAssembly()?.GetName().Name
+                   ?? throw new InvalidOperationException($"Missing AppName in configuration and couldn't get Name from Assembly");
+        _version = configuration["Version"]
+            ?? GetInformationalVersion()
+            ?? throw new InvalidOperationException($"Missing Version in configuration and couldn't get Version from Assembly");
+        
+        var statisticsBaseUrl = configuration["STATISTICS_BASE_URL"] ?? throw new NullReferenceException();
+        var statisticsKey = configuration["STATISTICS_KEY"] ?? throw new NullReferenceException();
         
         _httpClient = new HttpClient
         {
@@ -79,5 +85,23 @@ public class StatisticsService : IStatisticsService
         {
             _logger.LogError(ex, "Statistics error with Payload {@Payload}", payload);
         }
+    }
+    
+    private static string? GetInformationalVersion()
+    {
+        var informationalVersion = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+
+        if (informationalVersion is null)
+        {
+            return informationalVersion;
+        }
+        
+        var versionParts = informationalVersion.Split("+");
+        if (versionParts.Length > 1)
+        {
+            informationalVersion = versionParts[0];
+        }
+
+        return informationalVersion;
     }
 }
