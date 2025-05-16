@@ -8,12 +8,22 @@ Løsning som automatisk arkiverer gjenkjennbare e-poster fra en postboks og inn 
 ## Oppsett
 - Lag en outlook regel på innboks-mappen som flytter e-post som skal sjekkes for automatisering/automatiseres til {Postmottak_MailFolder_Inbox_Id}
 - Opprett en `local.settings.json` fil med følgende innhold og bytt ut med riktige verdier:
+
+> Optional properties:
+> - `AppName`: If not set, the assembly name will be used
+> - `Version`: If not set, the assembly version will be used
+> - `EMAILTYPE_RF13.50_TEST_PROJECTNUMBER`: Only needed in dev and local, and should refer to a test project in the test environment
+
 ```json
 {
     "IsEncrypted": false,
     "Values": {
         "AzureWebJobsStorage": "UseDevelopmentStorage=true",
         "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+        "BLOB_STORAGE_CONNECTION_STRING": "connstring",
+        "BLOB_STORAGE_CONTAINER_NAME": "dev-local",
+        "BLOB_STORAGE_QUEUE_NAME": "queue",
+        "BLOB_STORAGE_FAILED_NAME": "failed",
         "AppName": "postmottak-arkivering-dotnet",
         "Version": "0.0.1",
         "BetterStack_Endpoint": "https://something.betterstackdata.com",
@@ -21,14 +31,27 @@ Løsning som automatisk arkiverer gjenkjennbare e-poster fra en postboks og inn 
         "Serilog_MinimumLevel_Override_Microsoft.Hosting": "Warning",
         "Serilog_MinimumLevel_Override_Microsoft.AspNetCore": "Warning",
         "Serilog_MinimumLevel_Override_OpenApiTriggerFunction": "Warning",
+        "RETRY_INTERVALS": "Her legger du en kommaseparert liste med antall minutter mellom hver retry (1,1,1,1)",
         "AZURE_CLIENT_ID": "AppRegClientId",
         "AZURE_CLIENT_SECRET": "AppRegClientSecret",
         "AZURE_TENANT_ID": "AppRegTenantId",
-        "Postmottak_UPN": "mailbox@domain.no",
-        "Postmottak_MailFolder_Inbox_Id": "Inbox folder id",
-        "Postmottak_MailFolder_Finished_Id": "Finished folder id",
-        "Postmottak_MailFolder_ManualHandling_Id": "Manual handling folder id",
-        "Postmottak_MailKnownSubjects": "Skilttagging,Veiherping,Busskapring"
+        "ARCHIVE_SCOPE": "arkivskop",
+        "ARCHIVE_BASE_URL": "url-til-arkiv-api",
+        "ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN": "epost-inn-recno",
+        "POSTMOTTAK_UPN": "mailbox@domain.no",
+        "POSTMOTTAK_MAIL_FOLDER_INBOX_ID": "Inbox folder id",
+        "POSTMOTTAK_MAIL_FOLDER_FINISHED_ID": "Finished folder id",
+        "POSTMOTTAK_MAIL_FOLDER_MANUALHANDLING_ID": "Manual handling folder id",
+        "AZURE_OPENAI_API_KEY": "secret key",
+        "AZURE_OPENAI_MODEL_NAME": "gpt-4o-mini",
+        "AZURE_OPENAI_ENDPOINT": "sweden url",
+        "AZURE_OPENAI_MAX_COMPLETION_TOKENS": "10000",
+        "STATISTICS_BASE_URL": "stats url",
+        "STATISTICS_KEY": "stats key",
+        "EMAILTYPE_RF13.50_TEST_PROJECTNUMBER": "Denne trengs bare i dev og local og skal henvise til et test-prosjekt i testmiljøet",
+        "EMAILTYPE_INNSYN_ADDRESSES": "bjarne.betjent@sesamstasjon.no",
+        "EMAILTYPE_PENGETRANSPORTEN_FORWARD_ADDRESSES": "o.tidemann@sesamstasjon.no",
+        "EMAILTYPE_LOYVEGARANTI_RESPONSIBLE_ENTERPRISE_RECNO": "81549300"
     }
 }
 ```

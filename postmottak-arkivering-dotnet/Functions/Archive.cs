@@ -43,7 +43,7 @@ public class Archive
     private readonly string _mailFolderManualHandlingId;
     private readonly string _mailFolderFinishedId;
     private readonly string _postboxUpn;
-    private readonly int[] _retryIntervals;
+    private readonly int[] _retryMinutesIntervals;
 
     public Archive(IConfiguration configuration,
         IAiArntIvanService aiArntIvanService,
@@ -64,7 +64,7 @@ public class Archive
 
         _blobStorageFailedName = configuration["BLOB_STORAGE_FAILED_NAME"] ?? "failed";
         _blobStorageQueueName = configuration["BLOB_STORAGE_QUEUE_NAME"] ?? "queue";
-        _retryIntervals = configuration["RETRY_INTERVALS"]?.Split(',').Select(int.Parse).ToArray() ?? throw new NullReferenceException();
+        _retryMinutesIntervals = configuration["RETRY_INTERVALS"]?.Split(',').Select(int.Parse).ToArray() ?? throw new NullReferenceException();
         
         _mailFolderInboxId = configuration["POSTMOTTAK_MAIL_FOLDER_INBOX_ID"] ?? throw new NullReferenceException();
         _mailFolderManualHandlingId = configuration["POSTMOTTAK_MAIL_FOLDER_MANUALHANDLING_ID"] ?? throw new NullReferenceException();
@@ -283,7 +283,7 @@ public class Archive
                     flowStatus.ErrorStack = ex.StackTrace;
                     flowStatus.RunCount++;
 
-                    if (flowStatus.SendToArkivarerForHandling || flowStatus.RunCount > _retryIntervals.Length)
+                    if (flowStatus.SendToArkivarerForHandling || flowStatus.RunCount > _retryMinutesIntervals.Length)
                     {
                         _logger.LogWarning(
                             "MessageId {MessageId} is unhandelable. Message will be moved to manual handling folder and arkivarer must do something!");
@@ -295,8 +295,8 @@ public class Archive
                         continue;
                     }
 
-                    int retryAfterSeconds = _retryIntervals[flowStatus.RunCount - 1];
-                    flowStatus.RetryAfter = DateTime.UtcNow.AddSeconds(retryAfterSeconds);
+                    int retryAfterMinutes = _retryMinutesIntervals[flowStatus.RunCount - 1];
+                    flowStatus.RetryAfter = DateTime.UtcNow.AddMinutes(retryAfterMinutes);
 
                     await UpsertFlowStatusBlob(flowStatus.Message.Id!, flowStatus);
                 }
