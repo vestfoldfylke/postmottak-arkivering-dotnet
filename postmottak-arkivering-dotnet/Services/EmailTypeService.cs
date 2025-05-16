@@ -54,7 +54,7 @@ public class EmailTypeService : IEmailTypeService
             }
         }
 
-        _logger.LogInformation("No matching email type found for MessageId {MessageId}", message.Subject);
+        _logger.LogInformation("No matching email type found for MessageId {MessageId}", message.Id);
         return null;
     }
     
