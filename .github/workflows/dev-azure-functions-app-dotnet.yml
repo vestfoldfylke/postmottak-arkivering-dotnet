@@ -54,7 +54,7 @@ jobs:
         popd
 
     - name: 'Test Project'
-      run: dotnet test --no-build
+      run: dotnet test --configuration Release
 
     - name: 'Run Azure Functions Action'
       uses: Azure/functions-action@v1
