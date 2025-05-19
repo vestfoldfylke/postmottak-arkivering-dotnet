@@ -62,7 +62,7 @@ public partial class Rf1350EmailType : IEmailType
         {
             _epostInnDocumentCategory = configuration["ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN"] ?? throw new NullReferenceException();
             _postmottakUpn = configuration["POSTMOTTAK_UPN"] ?? throw new NullReferenceException();
-            _testProjectNumber = configuration["EMAILTYPE_RF13.50_TEST_PROJECTNUMBER"];
+            _testProjectNumber = configuration["EMAILTYPE_RF1350_TEST_PROJECTNUMBER"];
         }
     }
     
