@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +16,8 @@ builder.ConfigureFunctionsWebApplication();
 builder.UseMiddleware<ErrorHandlingMiddleware>();
 
 builder.Logging.AddVfkLogging();
+
+Serilog.Debugging.SelfLog.Enable(Console.Error);
 
 builder.Services.AddSingleton<IEmailTypeService, EmailTypeService>();
 builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();
