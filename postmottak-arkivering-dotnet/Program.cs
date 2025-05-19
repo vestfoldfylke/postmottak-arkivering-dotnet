@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,7 +18,11 @@ builder.UseMiddleware<ErrorHandlingMiddleware>();
 
 builder.Logging.AddVfkLogging();
 
-Serilog.Debugging.SelfLog.Enable(Console.Error);
+Serilog.Debugging.SelfLog.Enable(msg =>
+{
+     Debug.WriteLine($"Æ har dreti i bidet: {msg}");
+     Console.WriteLine($"Æ har dreti i bidet: {msg}");
+});
 
 builder.Services.AddSingleton<IEmailTypeService, EmailTypeService>();
 builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();
