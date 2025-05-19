@@ -263,3 +263,6 @@ riderModule.iml
 # Python Tools for Visual Studio (PTVS)
 __pycache__/
 *.pyc
+
+# Annoying
+.DS_Store
