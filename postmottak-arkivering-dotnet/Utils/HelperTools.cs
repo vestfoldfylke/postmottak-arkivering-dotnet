@@ -1,3 +1,5 @@
+using System;
+
 namespace postmottak_arkivering_dotnet.Utils;
 
 public static class HelperTools
@@ -7,4 +9,7 @@ public static class HelperTools
                     line-height: 12pt; font-family: 'Arial'; color: Black; text-align: left;'>
             {message}
         </div>";
+    
+    public static DateTimeOffset GetDateTimeOffset(DateTime? dateTime = null, string timeZone = "Europe/Oslo") =>
+        TimeZoneInfo.ConvertTime(dateTime ?? DateTime.Now, TimeZoneInfo.FindSystemTimeZoneById(timeZone));
 }

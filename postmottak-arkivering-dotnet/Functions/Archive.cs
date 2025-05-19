@@ -251,7 +251,7 @@ public class Archive
 
                     string comment = HelperTools.GenerateHtmlBox($@"
                                     Automatisk håndteringstype: <b>{emailType.Title}</b><br />
-                                    Klokkeslett: <i>{DateTime.Now:dd.MM.yyyy HH:mm:ss}</i><br />
+                                    Klokkeslett: <i>{HelperTools.GetDateTimeOffset():dd.MM.yyyy HH:mm:ss}</i><br />
                                     Melding: {handledMessage}
                                     {funFactMessage}");
 
