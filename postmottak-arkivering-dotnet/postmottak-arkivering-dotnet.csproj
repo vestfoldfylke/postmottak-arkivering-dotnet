@@ -6,6 +6,12 @@
         <Nullable>enable</Nullable>
         <RootNamespace>postmottak_arkivering_dotnet</RootNamespace>
         <Version>1.0.0</Version>
+
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        
+        <NugetAudit>true</NugetAudit>
+        <NugetAuditMode>all</NugetAuditMode> <!-- all (direct and transitive dependencies), direct (direct dependencies only) -->
+        <NugetAuditLevel>moderate</NugetAuditLevel> <!-- low (->), moderate (->), high (->), critical (->) -->
     </PropertyGroup>
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
