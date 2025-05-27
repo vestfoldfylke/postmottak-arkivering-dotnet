@@ -14,6 +14,7 @@ using Microsoft.Graph.Users.Item.Messages.Item.Move;
 using Microsoft.Graph.Users.Item.Messages.Item.Reply;
 using Microsoft.Kiota.Abstractions;
 using postmottak_arkivering_dotnet.Contracts.Email;
+using Vestfold.Extensions.Authentication.Services;
 
 namespace postmottak_arkivering_dotnet.Services;
 

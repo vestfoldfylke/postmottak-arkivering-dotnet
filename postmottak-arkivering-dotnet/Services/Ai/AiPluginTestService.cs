@@ -9,6 +9,8 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
 using postmottak_arkivering_dotnet.Plugins.Ai;
 using postmottak_arkivering_dotnet.Utils;
+using Vestfold.Extensions.Archive.Services;
+using Vestfold.Extensions.Authentication.Services;
 
 namespace postmottak_arkivering_dotnet.Services.Ai;
 

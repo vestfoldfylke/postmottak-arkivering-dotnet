@@ -8,6 +8,10 @@ using postmottak_arkivering_dotnet.Middleware;
 using postmottak_arkivering_dotnet.Services;
 using postmottak_arkivering_dotnet.Services.Ai;
 using postmottak_arkivering_dotnet.Utils;
+using Vestfold.Extensions.Archive;
+using Vestfold.Extensions.Archive.Services;
+using Vestfold.Extensions.Authentication;
+using Vestfold.Extensions.Authentication.Services;
 using Vestfold.Extensions.Logging;
 
 var builder = FunctionsApplication.CreateBuilder(args);
@@ -17,6 +21,8 @@ builder.ConfigureFunctionsWebApplication();
 builder.UseMiddleware<ErrorHandlingMiddleware>();
 
 builder.Logging.AddVestfoldLogging();
+builder.Services.AddVestfoldAuthentication();
+builder.Services.AddVestfoldArchive();
 
 Serilog.Debugging.SelfLog.Enable(msg =>
 {

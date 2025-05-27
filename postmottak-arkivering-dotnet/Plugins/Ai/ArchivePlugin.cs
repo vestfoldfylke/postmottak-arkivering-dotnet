@@ -2,8 +2,8 @@ using System.ComponentModel;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
-using postmottak_arkivering_dotnet.Services;
 using Serilog;
+using Vestfold.Extensions.Archive.Services;
 
 namespace postmottak_arkivering_dotnet.Plugins.Ai;
 

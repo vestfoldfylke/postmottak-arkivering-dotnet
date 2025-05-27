@@ -9,6 +9,7 @@ using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
 using postmottak_arkivering_dotnet.EmailTypes;
 using postmottak_arkivering_dotnet.Services;
 using postmottak_arkivering_dotnet.Services.Ai;
+using Vestfold.Extensions.Archive.Services;
 
 namespace postmottak_arkivering_dotnet_tests;
 
