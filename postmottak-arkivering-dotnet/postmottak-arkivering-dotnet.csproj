@@ -25,6 +25,8 @@
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.0" />
         <PackageReference Include="Microsoft.SemanticKernel" Version="1.47.0" />
         <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.47.0" />
+        <!-- Remove System.Text.RegularExpressions when Microsoft.Azure.Functions.Worker.Extensions.OpenApi has implemeted System.Text.RegularExpressions >= 4.3.1 -->
+        <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
         <PackageReference Include="Vestfold.Extensions.Archive" Version="1.0.0" />
         <PackageReference Include="Vestfold.Extensions.Authentication" Version="1.0.0" />
         <PackageReference Include="Vestfold.Extensions.Logging" Version="1.0.0" />
