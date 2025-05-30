@@ -1,5 +1,5 @@
-using System;
-using System.Diagnostics;
+/*using System;
+using System.Diagnostics;*/
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,11 +24,11 @@ builder.Logging.AddVestfoldLogging();
 builder.Services.AddVestfoldAuthentication();
 builder.Services.AddVestfoldArchive();
 
-Serilog.Debugging.SelfLog.Enable(msg =>
+/*Serilog.Debugging.SelfLog.Enable(msg =>
 {
      Debug.WriteLine($"Æ har dreti i bidet: {msg}");
      Console.WriteLine($"Æ har dreti i bidet: {msg}");
-});
+});*/
 
 builder.Services.AddSingleton<IEmailTypeService, EmailTypeService>();
 builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();
