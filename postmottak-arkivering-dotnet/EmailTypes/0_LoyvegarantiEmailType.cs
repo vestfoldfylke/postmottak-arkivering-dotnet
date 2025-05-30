@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
@@ -42,7 +43,8 @@ public class LoyvegarantiEmailType : IEmailType
     private LoyvegarantiChatResult? _result;
 
     public bool Enabled => false;
-    public bool IncludeFunFact => true;
+    public bool IncludeFunFact => false;
+    public string Result => JsonSerializer.Serialize(_result, new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
     public string Title => "Løyvegaranti";
 
     public LoyvegarantiEmailType(IServiceProvider serviceProvider)

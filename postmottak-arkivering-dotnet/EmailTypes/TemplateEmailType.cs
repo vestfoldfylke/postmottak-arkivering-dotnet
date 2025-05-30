@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
@@ -30,7 +31,8 @@ public class TemplateEmailType : IEmailType
     private TemplateChatResult? _result;  // TODO: Change this
     
     public bool Enabled => false; // TODO: Change this (probably)
-    public bool IncludeFunFact => true;
+    public bool IncludeFunFact => false;
+    public string Result => JsonSerializer.Serialize(_result, new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
     public string Title => "Template"; // TODO: Change this
 
     public TemplateEmailType(IServiceProvider serviceProvider)

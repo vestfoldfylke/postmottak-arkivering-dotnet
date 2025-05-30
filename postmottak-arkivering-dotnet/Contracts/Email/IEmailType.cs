@@ -7,6 +7,7 @@ public interface IEmailType
 {
     bool Enabled { get; }
     bool IncludeFunFact { get; }
+    public string Result { get; }
     string Title { get; }
     
     Task<(bool, string?)> MatchCriteria(Message message);

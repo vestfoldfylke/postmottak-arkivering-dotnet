@@ -246,13 +246,14 @@ public class Archive
                     var handledMessage = await emailType.HandleMessage(flowStatus);
                     var funFact = emailType.IncludeFunFact ? await _aiArntIvanService.FunFact() : string.Empty;
                     var funFactMessage = emailType.IncludeFunFact && !string.IsNullOrEmpty(funFact)
-                        ? $"<br />{funFact}"
+                        ? $"<br /><b>FunFact</b>: {funFact}"
                         : string.Empty;
 
                     string comment = HelperTools.GenerateHtmlBox($@"
-                                    Automatisk håndteringstype: <b>{emailType.Title}</b><br />
-                                    Klokkeslett: <i>{HelperTools.GetDateTimeOffset():dd.MM.yyyy HH:mm:ss}</i><br />
-                                    Melding: {handledMessage}
+                                    <b>Type e-post</b>: {emailType.Title}<br />
+                                    <b>Håndtert</b>: <i>{HelperTools.GetDateTimeOffset():dd.MM.yyyy HH:mm:ss}</i><br />
+                                    <b>Info</b>: {handledMessage}<br />
+                                    <b>AI-resultat</b>: {emailType.Result}<br />
                                     {funFactMessage}");
 
                     // update body to reflect that its handled

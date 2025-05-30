@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -48,7 +49,8 @@ public partial class Rf1350EmailType : IEmailType
     private Rf1350ChatResult? _result;
 
     public bool Enabled => true;
-    public bool IncludeFunFact => true;
+    public bool IncludeFunFact => false;
+    public string Result => JsonSerializer.Serialize(_result, new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
     public string Title => "RF13.50";
 
     public Rf1350EmailType(IServiceProvider serviceProvider)
