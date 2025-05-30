@@ -1,0 +1,91 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0" version="27.0.5">
+  <diagram name="Page-1" id="6sWM705rrdeoT4AB0MJl">
+    <mxGraphModel dx="2269" dy="743" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-5" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="99.5" y="70" width="300" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-1" value="&lt;b&gt;post@fylke.no&lt;/b&gt;" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://cdn0.iconfinder.com/data/icons/logos-microsoft-office-365/128/Microsoft_Office-07-128.png" vertex="1" parent="1">
+          <mxGeometry x="119.5" y="120" width="128" height="128" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-2" value="Robot" style="image;aspect=fixed;perimeter=ellipsePerimeter;html=1;align=center;shadow=0;dashed=0;spacingTop=3;image=img/lib/active_directory/folder.svg;" vertex="1" parent="1">
+          <mxGeometry x="299.5" y="90" width="36.5" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-3" value="Automatisk behandlet" style="image;aspect=fixed;perimeter=ellipsePerimeter;html=1;align=center;shadow=0;dashed=0;spacingTop=3;image=img/lib/active_directory/folder.svg;" vertex="1" parent="1">
+          <mxGeometry x="299.5" y="170" width="36.5" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-4" value="Manuell håndtering" style="image;aspect=fixed;perimeter=ellipsePerimeter;html=1;align=center;shadow=0;dashed=0;spacingTop=3;image=img/lib/active_directory/folder.svg;" vertex="1" parent="1">
+          <mxGeometry x="299.5" y="260" width="36.5" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-8" value="Arkiverings-robåt" style="shape=mxgraph.signs.sports.kayak;html=1;pointerEvents=1;fillColor=#000000;strokeColor=none;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
+          <mxGeometry x="200" y="420" width="99" height="99" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="cAmvjZ3WunnU9N3wVqUZ-5" target="cAmvjZ3WunnU9N3wVqUZ-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cAmvjZ3WunnU9N3wVqUZ-17" target="cAmvjZ3WunnU9N3wVqUZ-22">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-17" value="&lt;ul&gt;&lt;li style=&quot;text-align: left;&quot;&gt;Er dette en e-post jeg kjenner igjen?&lt;/li&gt;&lt;ul&gt;&lt;li style=&quot;text-align: left;&quot;&gt;Emnefelt?&lt;/li&gt;&lt;li style=&quot;text-align: left;&quot;&gt;Avsender?&lt;/li&gt;&lt;li style=&quot;text-align: left;&quot;&gt;Innhold?&lt;/li&gt;&lt;/ul&gt;&lt;li style=&quot;text-align: left;&quot;&gt;Har vi all data vi trenger for å håndtere automatisk?&lt;/li&gt;&lt;/ul&gt;" style="html=1;verticalLabelPosition=bottom;align=center;labelBackgroundColor=#ffffff;verticalAlign=top;strokeWidth=2;strokeColor=#0080F0;shadow=0;dashed=0;shape=mxgraph.ios7.icons.mail;" vertex="1" parent="1">
+          <mxGeometry x="204.5" y="580" width="90" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-18" value="Azure OpenAI" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/ai_machine_learning/Azure_OpenAI.svg;" vertex="1" parent="1">
+          <mxGeometry x="650" y="562" width="68" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.035;entryY=0.641;entryDx=0;entryDy=0;entryPerimeter=0;startArrow=classic;startFill=1;dashed=1;" edge="1" parent="1" source="cAmvjZ3WunnU9N3wVqUZ-17" target="cAmvjZ3WunnU9N3wVqUZ-18">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-21" value="Hent og strukturer data" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="cAmvjZ3WunnU9N3wVqUZ-20">
+          <mxGeometry x="0.1246" y="2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="cAmvjZ3WunnU9N3wVqUZ-22" target="cAmvjZ3WunnU9N3wVqUZ-25">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-29" value="Nei" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="cAmvjZ3WunnU9N3wVqUZ-26">
+          <mxGeometry x="-0.2681" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-22" value="Kan automatisere?" style="rhombus;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="194.5" y="790" width="110" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.498;entryY=0.066;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="cAmvjZ3WunnU9N3wVqUZ-8" target="cAmvjZ3WunnU9N3wVqUZ-17">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-25" value="Flytt til manuell håndtering" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://cdn0.iconfinder.com/data/icons/logos-microsoft-office-365/128/Microsoft_Office-07-128.png" vertex="1" parent="1">
+          <mxGeometry x="490" y="816" width="48" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-27" value="&lt;ul&gt;&lt;li style=&quot;text-align: left;&quot;&gt;Kjente e-post-typer&lt;br&gt;&lt;/li&gt;&lt;ul&gt;&lt;li style=&quot;text-align: left;&quot;&gt;RF13.50&lt;/li&gt;&lt;li style=&quot;text-align: left;&quot;&gt;Faktura&lt;/li&gt;&lt;li style=&quot;text-align: left;&quot;&gt;Løyvegaranti&lt;/li&gt;&lt;li style=&quot;text-align: left;&quot;&gt;...&lt;/li&gt;&lt;/ul&gt;&lt;/ul&gt;" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.code_file;pointerEvents=1;" vertex="1" parent="1">
+          <mxGeometry x="-140" y="580" width="47.5" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-28" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;startArrow=classic;startFill=1;" edge="1" parent="1" source="cAmvjZ3WunnU9N3wVqUZ-17" target="cAmvjZ3WunnU9N3wVqUZ-27">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-37" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="cAmvjZ3WunnU9N3wVqUZ-33" target="cAmvjZ3WunnU9N3wVqUZ-36">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-33" value="Kjør automatisering for denne typen e-post&lt;br&gt;&lt;ul&gt;&lt;li style=&quot;text-align: left;&quot;&gt;Arkivere&lt;/li&gt;&lt;li style=&quot;text-align: left;&quot;&gt;Videresende&lt;/li&gt;&lt;li style=&quot;text-align: left;&quot;&gt;...&lt;/li&gt;&lt;/ul&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/general/Code.svg;" vertex="1" parent="1">
+          <mxGeometry x="218" y="970" width="64" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.489;entryY=-0.01;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="cAmvjZ3WunnU9N3wVqUZ-22" target="cAmvjZ3WunnU9N3wVqUZ-33">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-35" value="Ja" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="cAmvjZ3WunnU9N3wVqUZ-34">
+          <mxGeometry x="-0.2795" y="1" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-36" value="Merk e-post med hva som er gjort,&lt;br&gt;og flytt til automatisk behandlet" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://cdn0.iconfinder.com/data/icons/logos-microsoft-office-365/128/Microsoft_Office-07-128.png" vertex="1" parent="1">
+          <mxGeometry x="490" y="972" width="48" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="cAmvjZ3WunnU9N3wVqUZ-38" value="Vi styrer selv hva som sendes til KI-modellene" style="shape=note;strokeWidth=2;fontSize=14;size=20;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#666600;" vertex="1" parent="1">
+          <mxGeometry x="440" y="500" width="110.00000000000001" height="80" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
