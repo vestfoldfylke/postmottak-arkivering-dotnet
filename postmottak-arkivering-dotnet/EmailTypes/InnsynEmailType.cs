@@ -29,7 +29,7 @@ public class InnsynEmailType : IEmailType
 
     private InnsynChatResult? _result;
     
-    public bool Enabled => true;
+    public bool Enabled => false;
     public bool IncludeFunFact => true;
     public string Title => "Innsyn";
 
