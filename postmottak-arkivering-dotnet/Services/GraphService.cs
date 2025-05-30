@@ -9,6 +9,7 @@ using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
 using Microsoft.Graph.Users.Item.MailFolders.Item.Messages;
+using Microsoft.Graph.Users.Item.Messages.Item.Copy;
 using Microsoft.Graph.Users.Item.Messages.Item.Forward;
 using Microsoft.Graph.Users.Item.Messages.Item.Move;
 using Microsoft.Graph.Users.Item.Messages.Item.Reply;
@@ -20,6 +21,7 @@ namespace postmottak_arkivering_dotnet.Services;
 
 public interface IGraphService
 {
+    Task<Message?> CopyMailMessage(string userPrincipalName, string messageId, string destinationFolderId);
     Task ForwardMailMessage(string userPrincipalName, string messageId, List<string> recipients, string? comment = null);
     MailAttachment GetMailAttachment(Attachment attachment);
     Task<List<MailFolder>> GetMailFolders(string userPrincipalName);
@@ -45,6 +47,31 @@ public class GraphService : IGraphService
     {
         _logger = logger;
         _graphClient = authenticationService.CreateGraphClient();
+    }
+
+    public async Task<Message?> CopyMailMessage(string userPrincipalName, string messageId, string destinationFolderId)
+    {
+        try
+        {
+            var message = await _graphClient.Users[userPrincipalName].Messages[messageId].Copy.PostAsync(
+                new CopyPostRequestBody
+                {
+                    DestinationId = destinationFolderId
+                }, configuration => configuration.Headers.Add(ImmutableIdHeader, ImmutableIdHeaderValue));
+
+            if (message is null)
+            {
+                throw new InvalidOperationException("Message not copied");
+            }
+            
+            _logger.LogInformation("MessageId {MessageId} successfully copied to {CopiedMessageId} in FolderId {DestinationFolderId} in {UserPrincipalName}", messageId, message.Id, destinationFolderId, userPrincipalName);
+            return message;
+        }
+        catch (ODataError ex)
+        {
+            _logger.LogError(ex, "MessageId {MessageId} failed to be copied to FolderId {DestinationFolderId} in {UserPrincipalName}", messageId, destinationFolderId, userPrincipalName);
+            return null;
+        }
     }
     
     public async Task ForwardMailMessage(string userPrincipalName, string messageId, List<string> recipients, string? comment = null)

@@ -67,25 +67,30 @@ public partial class Rf1350EmailType : IEmailType
         }
     }
     
-    public async Task<bool> MatchCriteria(Message message)
+    public async Task<(bool, string?)> MatchCriteria(Message message)
     {
         await Task.CompletedTask;
         
         if (string.IsNullOrEmpty(message.From?.EmailAddress?.Address))
         {
-            return false;
+            return (false, "Avsender mangler. WHHAAAT?");
         }
 
-        if (!message.From.EmailAddress.Address.Equals(FromAddress, StringComparison.OrdinalIgnoreCase)
-            || !_subjects.Any(subject => message.Subject!.StartsWith(subject, StringComparison.OrdinalIgnoreCase)))
+        if (!message.From.EmailAddress.Address.Equals(FromAddress, StringComparison.OrdinalIgnoreCase))
         {
-            return false;
+            return (false, $"Avsender er ikke {FromAddress}. Dette er ikke en {Title} e-post");
+        }
+
+        if (!_subjects.Any(subject => message.Subject!.StartsWith(subject, StringComparison.OrdinalIgnoreCase)))
+        {
+            return (false, $"E-postens emne inneholder ikke et gyldig søkeord for {Title.ToLower()}. Gyldige søkeord er: {string.Join(", ", _subjects)}");
         }
         
         var (_, result) = await _aiArntIvanService.Ask<Rf1350ChatResult>(message.Body!.Content!);
         if (string.IsNullOrEmpty(result?.Type) || string.IsNullOrEmpty(result.ReferenceNumber))
         {
-            return false;
+            var resultString = JsonSerializer.Serialize(result);
+            return (false, $"Avsender og emne samsvarte med {Title}, men AI-resultatet indikerer at det ikke er en {nameof(Rf1350EmailType)}:<br />AI-resultat:<br />{resultString}");
         }
 
         _result = result;
@@ -96,7 +101,7 @@ public partial class Rf1350EmailType : IEmailType
             _result.ProjectNumber = _testProjectNumber;
         }
 
-        return true;
+        return (true, null);
     }
 
     public async Task<string> HandleMessage(FlowStatus flowStatus)

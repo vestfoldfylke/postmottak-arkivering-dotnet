@@ -62,34 +62,35 @@ public class LoyvegarantiEmailType : IEmailType
         }
     }
     
-    public async Task<bool> MatchCriteria(Message message)
+    public async Task<(bool, string?)> MatchCriteria(Message message)
     {
         await Task.CompletedTask;
         
         if (string.IsNullOrEmpty(message.From?.EmailAddress?.Address))
         {
-            return false;
+            return (false, "Avsender mangler. WHHAAAT?");
         }
         
         if (!message.From.EmailAddress.Address.Equals(FromAddress, StringComparison.OrdinalIgnoreCase))
         {
-            return false;
+            return (false, $"Avsender er ikke {FromAddress}. Dette er ikke en {Title.ToLower()} e-post");
         }
         
         if (!_subjects.Any(subject => message.Subject!.Contains(subject, StringComparison.OrdinalIgnoreCase)))
         {
-            return false;
+            return (false, $"E-postens emne inneholder ikke et gyldig søkeord for {Title.ToLower()}. Gyldige søkeord er: {string.Join(", ", _subjects)}");
         }
         
         var (_, result) = await _aiArntIvan.Ask<LoyvegarantiChatResult>($"{message.Subject!} - {message.Body!.Content!}");
         if (result is null || string.IsNullOrEmpty(result.OrganizationName) || string.IsNullOrEmpty(result.OrganizationNumber))
         {
-            return false;
+            var resultString = JsonSerializer.Serialize(result);
+            return (false, $"Avsender og emne samsvarte med {Title.ToLower()}, men AI-resultatet indikerer at det ikke er en {nameof(LoyvegarantiEmailType)}:<br />AI-resultat:<br />{resultString}");
         }
 
         _result = result;
 
-        return true;
+        return (true, null);
     }
 
     public async Task<string> HandleMessage(FlowStatus flowStatus)

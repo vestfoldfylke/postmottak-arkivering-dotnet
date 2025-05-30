@@ -9,6 +9,6 @@ public interface IEmailType
     bool IncludeFunFact { get; }
     string Title { get; }
     
-    Task<bool> MatchCriteria(Message message);
+    Task<(bool, string?)> MatchCriteria(Message message);
     Task<string> HandleMessage(FlowStatus flowStatus);
 }

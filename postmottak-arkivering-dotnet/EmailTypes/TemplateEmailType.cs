@@ -50,25 +50,26 @@ public class TemplateEmailType : IEmailType
         }
     }
     
-    public async Task<bool> MatchCriteria(Message message)
+    public async Task<(bool, string?)> MatchCriteria(Message message)
     {
         await Task.CompletedTask;
 
         if (!_subjects.Any(subject => message.Subject!.Contains(subject, StringComparison.OrdinalIgnoreCase)))
         {
-            return false;
+            return (false, "Emnet samsvarer ikke med noen av de forventede emnene");
         }
         
         // TODO: Change this
         var (_, result) = await _aiArntIvanService.Ask<TemplateChatResult>(message.Body!.Content!);
         if (result is null || !result.Property3)
         {
-            return false;
+            var resultString = JsonSerializer.Serialize(result);
+            return (false, $"Emne samsvarte med en av de forventede {Title.ToLower()} emnene, men AI-resultatet indikerer at det ikke er en {nameof(TemplateEmailType)}:<br />AI-resultat:<br />{resultString}");
         }
 
         _result = result;
 
-        return true;
+        return (true, null);
     }
 
     public async Task<string> HandleMessage(FlowStatus flowStatus)

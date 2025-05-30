@@ -88,24 +88,25 @@ public class PengetransportenEmailType : IEmailType
         }
     }
     
-    public async Task<bool> MatchCriteria(Message message)
+    public async Task<(bool, string?)> MatchCriteria(Message message)
     {
         await Task.CompletedTask;
 
         if (!_subjects.Any(subject => message.Subject!.Contains(subject, StringComparison.OrdinalIgnoreCase)))
         {
-            return false;
+            return (false, "Emnet samsvarer ikke med noen av de forventede fakturarelaterte emnene");
         }
         
         var (_, result) = await _aiArntIvanService.Ask<PengetransportenChatResult>(message.Body!.Content!);
         if (result is null || !result.IsInvoiceRelated)
         {
-            return false;
+            var resultString = JsonSerializer.Serialize(result);
+            return (false, $"Emne samsvarte med en av de forventede fakturarelaterte emnene, men AI-resultatet indikerer at det ikke er en {nameof(PengetransportenEmailType)}.<br />AI-resultat:<br />{resultString}");
         }
 
         _result = result;
 
-        return true;
+        return (true, null);
     }
 
     public async Task<string> HandleMessage(FlowStatus flowStatus)
