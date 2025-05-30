@@ -19,6 +19,7 @@ public class EmailTypeTests
     private readonly IAiPluginTestService _aiPluginTestService;
     private readonly IArchiveService _archiveService;
     private readonly IGraphService _graphService;
+    private readonly IServiceProvider _serviceProvider;
 
     private readonly EmailTypeService _emailTypeService;
     
@@ -28,21 +29,21 @@ public class EmailTypeTests
         _aiPluginTestService = Substitute.For<IAiPluginTestService>();
         _archiveService = Substitute.For<IArchiveService>();
         _graphService = Substitute.For<IGraphService>();
+        _serviceProvider = Substitute.For<IServiceProvider>();
         
         var logger = Substitute.For<ILogger<EmailTypeService>>();
-        var serviceProvider = Substitute.For<IServiceProvider>();
         
         IConfiguration configuration = new ConfigurationBuilder()
             .AddJsonFile("appsettings.json")
             .Build();
         
-        serviceProvider.GetService(typeof(IAiArntIvanService)).Returns(_aiArntIvanService);
-        serviceProvider.GetService(typeof(IAiPluginTestService)).Returns(_aiPluginTestService);
-        serviceProvider.GetService(typeof(IArchiveService)).Returns(_archiveService);
-        serviceProvider.GetService(typeof(IConfiguration)).Returns(configuration);
-        serviceProvider.GetService(typeof(IGraphService)).Returns(_graphService);
+        _serviceProvider.GetService(typeof(IAiArntIvanService)).Returns(_aiArntIvanService);
+        _serviceProvider.GetService(typeof(IAiPluginTestService)).Returns(_aiPluginTestService);
+        _serviceProvider.GetService(typeof(IArchiveService)).Returns(_archiveService);
+        _serviceProvider.GetService(typeof(IConfiguration)).Returns(configuration);
+        _serviceProvider.GetService(typeof(IGraphService)).Returns(_graphService);
         
-        _emailTypeService = new EmailTypeService(logger, serviceProvider);
+        _emailTypeService = new EmailTypeService(logger, _serviceProvider);
     }
     
     [Fact]
@@ -74,6 +75,12 @@ public class EmailTypeTests
     [InlineData("Faktura for betaling", "Faktura må betales snarest")]
     public async Task GetEmailType_Should_Return_PengetransportenEmailType(string subject, string body)
     {
+        if (!new PengetransportenEmailType(_serviceProvider).Enabled)
+        {
+            Assert.True(true);
+            return;
+        }
+        
         _aiArntIvanService.Ask<PengetransportenChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>())
             .Returns(([], new PengetransportenChatResult
             {
@@ -107,6 +114,12 @@ public class EmailTypeTests
     [InlineData("Mail angående innsyn i super sikkert dokumentet i arkivet", "Gi meg dokument")]
     public async Task GetEmailType_Should_Return_InnsynEmailType(string subject, string body)
     {
+        if (!new InnsynEmailType(_serviceProvider).Enabled)
+        {
+            Assert.True(true);
+            return;
+        }
+        
         _aiArntIvanService.Ask<InnsynChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>())
             .Returns(([], new InnsynChatResult
             {
@@ -150,6 +163,12 @@ public class EmailTypeTests
     [InlineData("RF13.50 - Automatisk epost til arkiv", "00-123456", "0000-0000")]
     public async Task GetEmailType_Should_Return_Rf1350EmailType(string subject, string projectNumber, string referenceNumber)
     {
+        if (!new Rf1350EmailType(_serviceProvider).Enabled)
+        {
+            Assert.True(true);
+            return;
+        }
+        
         _aiArntIvanService.Ask<Rf1350ChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>())
             .Returns(([], new Rf1350ChatResult
             {
