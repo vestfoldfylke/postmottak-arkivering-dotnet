@@ -4,6 +4,52 @@ Løsning som automatisk arkiverer gjenkjennbare e-poster fra en postboks og inn 
 ## Løsningsskisse
 ![image](https://github.com/user-attachments/assets/540a4bc0-b92a-4c59-b7d3-2f623c73510d)
 
+## Kjente e-posttyper
+
+### RF13.50 (søknad om midler knyttet til statlige tilskuddsordninger)
+[Mer info](https://www.regionalforvaltning.no/Dokumentasjon/index.html?soker.htm)
+
+#### Kriterie for gjenkjenning
+- Avsender er ikkesvar@regionalforvaltning.no
+- Emnefelt må være en av:
+    - RF13.50 - Automatisk kvittering på innsendt søknad
+    - RF13.50 - Automatisk epost til arkiv
+- KI-modell finner all nødvendig data i epost-innhold
+
+#### Flyt
+- Overføring av søknad
+    - Sjekk at avsender er en registrert virksomhet i arkivet
+    - Sjekk at prosjektet som er oppgitt i e-posten eksisterer
+    - Finn eksisterende sak, opprett hvis den mangler
+        - Dersom saken må opprettes og søknaden gjelder tidligere enn 2024 må den håndteres manuelt
+    - Opprett dokumentet/journalposten basert på e-posten og vedlegg
+- Kvittering på innsendt søknad
+    - Hent saken
+    - Hent original søknad fra saken - og hent ut avsender fra original søknad
+    - Opprett dokumentet/journalposten basert på e-posten og vedlegg
+- Anmodning om del-/slutt-utbetaling
+    - Sjekk at avsender er en registrert virksomhet i arkivet
+    - Sjekk at prosjektet som er oppgitt i e-posten eksisterer
+    - Finn eksisterende sak, opprett hvis den mangler
+        - Dersom saken må opprettes og søknaden gjelder tidligere enn 2024 må den håndteres manuelt
+    - Opprett dokumentet/journalposten basert på e-posten og vedlegg
+
+### Pengetransporten (ting som har med faktura å gjøre)
+
+#### Kriterie for gjenkjenning
+- Emnefelt må inneholde et ord som har noe med betaling eller faktura å gjøre.
+- KI-modell må svare "JA" på at dette enten er en faktura / purre av noe slag, eller et spørsmål om betaling til fylkeskommunen
+
+#### Flyt
+- Videresend e-posten til faktura-avdelingen
+
+### Løyvegaranti (under utvikling)
+
+#### Kriterie for gjenkjenning
+Fyll ut
+
+#### Flyt
+Fyll ut
 
 ## Teknisk skisse
 ![image](https://github.com/user-attachments/assets/94dd7042-7cec-49bc-8da0-aa37f441bfa5)
