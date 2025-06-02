@@ -69,30 +69,46 @@ public partial class Rf1350EmailType : IEmailType
         }
     }
     
-    public async Task<(bool, string?)> MatchCriteria(Message message)
+    public async Task<EmailTypeMatchResult> MatchCriteria(Message message)
     {
         await Task.CompletedTask;
         
         if (string.IsNullOrEmpty(message.From?.EmailAddress?.Address))
         {
-            return (false, "Avsender mangler. WHHAAAT?");
+            return new EmailTypeMatchResult
+            {
+                Matched = EmailTypeMatched.No,
+                Result = "Avsender mangler. WHHAAAT?"
+            };
         }
 
         if (!message.From.EmailAddress.Address.Equals(FromAddress, StringComparison.OrdinalIgnoreCase))
         {
-            return (false, $"Avsender er ikke {FromAddress}. Dette er ikke en {Title} e-post");
+            return new EmailTypeMatchResult
+            {
+                Matched = EmailTypeMatched.No,
+                Result = $"Avsender er ikke {FromAddress}. Dette er ikke en {Title} e-post"
+            };
         }
 
         if (!_subjects.Any(subject => message.Subject!.StartsWith(subject, StringComparison.OrdinalIgnoreCase)))
         {
-            return (false, $"E-postens emne inneholder ikke et gyldig søkeord for {Title.ToLower()}. Gyldige søkeord er: {string.Join(", ", _subjects)}");
+            return new EmailTypeMatchResult
+            {
+                Matched = EmailTypeMatched.No,
+                Result = $"E-postens emne inneholder ikke et gyldig søkeord for {Title.ToLower()}. Gyldige søkeord er: {string.Join(", ", _subjects)}"
+            };
         }
         
         var (_, result) = await _aiArntIvanService.Ask<Rf1350ChatResult>(message.Body!.Content!);
         if (string.IsNullOrEmpty(result?.Type) || string.IsNullOrEmpty(result.ReferenceNumber))
         {
             var resultString = JsonSerializer.Serialize(result);
-            return (false, $"Avsender og emne samsvarte med {Title}, men AI-resultatet indikerer at det ikke er en {nameof(Rf1350EmailType)}:<br />AI-resultat:<br />{resultString}");
+            return new EmailTypeMatchResult
+            {
+                Matched = EmailTypeMatched.Maybe,
+                Result = $"Avsender og emne samsvarte med {Title}, men AI-resultatet indikerer at det ikke er en {nameof(Rf1350EmailType)}:<br />AI-resultat:<br />{resultString}"
+            };
         }
 
         _result = result;
@@ -102,8 +118,11 @@ public partial class Rf1350EmailType : IEmailType
             _logger.LogWarning("Test project number {_testProjectNumber} is set. Project number found by Arnt Ivan will be overridden for test purposes", _testProjectNumber);
             _result.ProjectNumber = _testProjectNumber;
         }
-
-        return (true, null);
+        
+        return new EmailTypeMatchResult
+        {
+            Matched = EmailTypeMatched.Yes
+        };
     }
 
     public async Task<string> HandleMessage(FlowStatus flowStatus)

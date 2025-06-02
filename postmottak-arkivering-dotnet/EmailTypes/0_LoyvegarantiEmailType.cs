@@ -64,35 +64,54 @@ public class LoyvegarantiEmailType : IEmailType
         }
     }
     
-    public async Task<(bool, string?)> MatchCriteria(Message message)
+    public async Task<EmailTypeMatchResult> MatchCriteria(Message message)
     {
         await Task.CompletedTask;
         
         if (string.IsNullOrEmpty(message.From?.EmailAddress?.Address))
         {
-            return (false, "Avsender mangler. WHHAAAT?");
+            return new EmailTypeMatchResult
+            {
+                Matched = EmailTypeMatched.No,
+                Result = "Avsender mangler. WHHAAAT?"
+            };
         }
         
         if (!message.From.EmailAddress.Address.Equals(FromAddress, StringComparison.OrdinalIgnoreCase))
         {
-            return (false, $"Avsender er ikke {FromAddress}. Dette er ikke en {Title.ToLower()} e-post");
+            return new EmailTypeMatchResult
+            {
+                Matched = EmailTypeMatched.No,
+                Result = $"Avsender er ikke {FromAddress}. Dette er ikke en {Title.ToLower()} e-post"
+            };
         }
         
         if (!_subjects.Any(subject => message.Subject!.Contains(subject, StringComparison.OrdinalIgnoreCase)))
         {
-            return (false, $"E-postens emne inneholder ikke et gyldig søkeord for {Title.ToLower()}. Gyldige søkeord er: {string.Join(", ", _subjects)}");
+            return new EmailTypeMatchResult
+            {
+                Matched = EmailTypeMatched.No,
+                Result = $"E-postens emne inneholder ikke et gyldig søkeord for {Title.ToLower()}. Gyldige søkeord er: {string.Join(", ", _subjects)}"
+            };
         }
         
         var (_, result) = await _aiArntIvan.Ask<LoyvegarantiChatResult>($"{message.Subject!} - {message.Body!.Content!}");
         if (result is null || string.IsNullOrEmpty(result.OrganizationName) || string.IsNullOrEmpty(result.OrganizationNumber))
         {
             var resultString = JsonSerializer.Serialize(result);
-            return (false, $"Avsender og emne samsvarte med {Title.ToLower()}, men AI-resultatet indikerer at det ikke er en {nameof(LoyvegarantiEmailType)}:<br />AI-resultat:<br />{resultString}");
+            return new EmailTypeMatchResult
+            {
+                Matched = EmailTypeMatched.Maybe,
+                Result = $"Avsender og emne samsvarte med {Title.ToLower()}, men AI-resultatet indikerer at det ikke er en {nameof(LoyvegarantiEmailType)}:<br />AI-resultat:<br />{resultString}"
+            };
         }
 
         _result = result;
-
-        return (true, null);
+        
+        return new EmailTypeMatchResult
+        {
+            Matched = EmailTypeMatched.Yes
+        };
     }
 
     public async Task<string> HandleMessage(FlowStatus flowStatus)

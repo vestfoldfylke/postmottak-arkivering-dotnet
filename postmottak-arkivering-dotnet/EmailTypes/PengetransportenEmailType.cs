@@ -90,25 +90,36 @@ public class PengetransportenEmailType : IEmailType
         }
     }
     
-    public async Task<(bool, string?)> MatchCriteria(Message message)
+    public async Task<EmailTypeMatchResult> MatchCriteria(Message message)
     {
         await Task.CompletedTask;
 
         if (!_subjects.Any(subject => message.Subject!.Contains(subject, StringComparison.OrdinalIgnoreCase)))
         {
-            return (false, "Emnet samsvarer ikke med noen av de forventede fakturarelaterte emnene");
+            return new EmailTypeMatchResult
+            {
+                Matched = EmailTypeMatched.No,
+                Result = "Emnet samsvarer ikke med noen av de forventede fakturarelaterte emnene"
+            };
         }
         
         var (_, result) = await _aiArntIvanService.Ask<PengetransportenChatResult>(message.Body!.Content!);
         if (result is null || !result.IsInvoiceRelated)
         {
             var resultString = JsonSerializer.Serialize(result);
-            return (false, $"Emne samsvarte med en av de forventede fakturarelaterte emnene, men AI-resultatet indikerer at det ikke er en {nameof(PengetransportenEmailType)}.<br />AI-resultat:<br />{resultString}");
+            return new EmailTypeMatchResult
+            {
+                Matched = EmailTypeMatched.Maybe,
+                Result = $"Emne samsvarte med en av de forventede fakturarelaterte emnene, men AI-resultatet indikerer at det ikke er en {nameof(PengetransportenEmailType)}.<br />AI-resultat:<br />{resultString}"
+            };
         }
 
         _result = result;
-
-        return (true, null);
+        
+        return new EmailTypeMatchResult
+        {
+            Matched = EmailTypeMatched.Yes
+        };
     }
 
     public async Task<string> HandleMessage(FlowStatus flowStatus)

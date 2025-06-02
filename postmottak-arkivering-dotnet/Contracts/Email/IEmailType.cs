@@ -10,6 +10,6 @@ public interface IEmailType
     public string Result { get; }
     string Title { get; }
     
-    Task<(bool, string?)> MatchCriteria(Message message);
+    Task<EmailTypeMatchResult> MatchCriteria(Message message);
     Task<string> HandleMessage(FlowStatus flowStatus);
 }

@@ -48,25 +48,36 @@ public class InnsynEmailType : IEmailType
         }
     }
     
-    public async Task<(bool, string?)> MatchCriteria(Message message)
+    public async Task<EmailTypeMatchResult> MatchCriteria(Message message)
     {
         await Task.CompletedTask;
 
         if (!_subjects.Any(subject => message.Subject!.Contains(subject, StringComparison.OrdinalIgnoreCase)))
         {
-            return (false, "Emnet samsvarer ikke med noen av de forventede emnene");
+            return new EmailTypeMatchResult
+            {
+                Matched = EmailTypeMatched.No,
+                Result = "Emnet samsvarer ikke med noen av de forventede emnene"
+            };
         }
         
         var (_, result) = await _aiArntIvanService.Ask<InnsynChatResult>(message.Body!.Content!);
         if (result is null || !result.IsInnsyn)
         {
             var resultString = JsonSerializer.Serialize(result);
-            return (false, $"Emne samsvarte med en av de forventede {Title.ToLower()} emnene, men AI-resultatet indikerer at det ikke er en {nameof(InnsynEmailType)}:<br />AI-resultat:<br />{resultString}");
+            return new EmailTypeMatchResult
+            {
+                Matched = EmailTypeMatched.Maybe,
+                Result = $"Emne samsvarte med en av de forventede {Title.ToLower()} emnene, men AI-resultatet indikerer at det ikke er en {nameof(InnsynEmailType)}:<br />AI-resultat:<br />{resultString}"
+            };
         }
 
         _result = result;
-
-        return (true, null);
+        
+        return new EmailTypeMatchResult
+        {
+            Matched = EmailTypeMatched.Yes
+        };
     }
 
     public async Task<string> HandleMessage(FlowStatus flowStatus)

@@ -27,7 +27,8 @@ public class EmailTypeService : IEmailTypeService
     private readonly List<Type> _emailTypes;
 
     private readonly string _postmottakUpn;
-    private readonly string _robotLogDestinationId;
+    private readonly string _robotLogMaybeId;
+    private readonly string _robotLogNoMatchId;
     
     private const string EmailTypeNamespace = "postmottak_arkivering_dotnet.EmailTypes";
     
@@ -39,7 +40,8 @@ public class EmailTypeService : IEmailTypeService
 
         IConfiguration configuration = serviceProvider.GetService<IConfiguration>()!;
         _postmottakUpn = configuration["POSTMOTTAK_UPN"] ?? throw new NullReferenceException();
-        _robotLogDestinationId = configuration["POSTMOTTAK_MAIL_FOLDER_ROBOT_LOG_ID"] ?? throw new NullReferenceException();
+        _robotLogMaybeId = configuration["POSTMOTTAK_MAIL_FOLDER_ROBOT_LOG_MAYBE_ID"] ?? throw new NullReferenceException();
+        _robotLogNoMatchId = configuration["POSTMOTTAK_MAIL_FOLDER_ROBOT_LOG_NOMATCH_ID"] ?? throw new NullReferenceException();
 
         _emailTypes = Assembly.GetExecutingAssembly().GetTypes()
             .Where(t => typeof(IEmailType).IsAssignableFrom(t) && !t.IsAbstract && CreateEmailTypeInstance(t).Enabled)
@@ -53,7 +55,9 @@ public class EmailTypeService : IEmailTypeService
             return null;
         }
 
-        string resultText = "";
+        var partialText = "";
+        var noMatchText = "";
+        var resultText = string.Empty;
         
         _logger.LogInformation("Determining email type for MessageId {MessageId}", message.Id);
         foreach (var emailType in _emailTypes)
@@ -61,25 +65,46 @@ public class EmailTypeService : IEmailTypeService
             var emailTypeInstance = CreateEmailTypeInstance(emailType);
 
             _logger.LogDebug("Starting {EmailType}.MatchCriteria for MessageId {MessageId}", emailType.Name, message.Id);
-            var (matched, result) = await emailTypeInstance.MatchCriteria(message);
-            if (matched)
+            var matchResult = await emailTypeInstance.MatchCriteria(message);
+            if (matchResult.Matched == EmailTypeMatched.Yes)
             {
                 _logger.LogInformation("Matched {EmailType} for MessageId {MessageId}", emailType.Name, message.Id);
                 return emailTypeInstance;
             }
             
-            if (result != null)
+            if (matchResult.Matched == EmailTypeMatched.Maybe)
             {
-                resultText += $"<b>{emailType.Name}</b>: {result}<br /><br />";
+                _logger.LogDebug("Partially matched {EmailType} for MessageId {MessageId}", emailType.Name, message.Id);
+                if (matchResult.Result != null)
+                {
+                    partialText += $"<b>{emailType.Name}</b>: {matchResult.Result}<br /><br />";
+                }
+                continue;
+            }
+            
+            _logger.LogDebug("Not matched {EmailType} for MessageId {MessageId}", emailType.Name, message.Id);
+            if (matchResult.Result != null)
+            {
+                noMatchText += $"<b>{emailType.Name}</b>: {matchResult.Result}<br /><br />";
             }
         }
-
-        if (!string.IsNullOrEmpty(resultText))
+        
+        if (!string.IsNullOrEmpty(partialText))
         {
-            resultText = HelperTools.GenerateHtmlBox(resultText);
+            resultText = HelperTools.GenerateHtmlBox(partialText);
         }
         
-        var newMessage = await _graphService.CopyMailMessage(_postmottakUpn, message.Id!, _robotLogDestinationId);
+        if (string.IsNullOrEmpty(resultText) &&  !string.IsNullOrEmpty(noMatchText))
+        {
+            resultText = HelperTools.GenerateHtmlBox(noMatchText);
+        }
+        
+        // TODO: Move out
+        var destinationFolderId = string.IsNullOrEmpty(partialText)
+            ? _robotLogNoMatchId
+            : _robotLogMaybeId;
+        
+        var newMessage = await _graphService.CopyMailMessage(_postmottakUpn, message.Id!, destinationFolderId);
         if (newMessage != null)
         {
             newMessage.Body!.Content = $"{resultText}{message.Body!.Content}";
