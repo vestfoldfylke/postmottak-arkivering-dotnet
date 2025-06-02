@@ -1,6 +1,9 @@
 # postmottak-arkivering
 Løsning som automatisk arkiverer gjenkjennbare e-poster fra en postboks og inn i arkivsystem
 
+## Behov
+Automatisering av innkommende e-post til fylkeskommunen. Hovedsaklig automatisk arkivering av kjente e-posttyper.
+
 ## Løsningsskisse
 ![image](https://github.com/user-attachments/assets/540a4bc0-b92a-4c59-b7d3-2f623c73510d)
 
