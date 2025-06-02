@@ -98,7 +98,7 @@ public class PengetransportenEmailType : IEmailType
         {
             return new EmailTypeMatchResult
             {
-                Matched = EmailTypeMatched.No,
+                Matched = EmailTypeMatched.Maybe,
                 Result = "Emnet samsvarer ikke med noen av de forventede fakturarelaterte emnene"
             };
         }
