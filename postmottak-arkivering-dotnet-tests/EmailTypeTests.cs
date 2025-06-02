@@ -55,13 +55,15 @@ public class EmailTypeTests
         var messageWithoutSubject = GenerateMessage();
         messageWithoutSubject.Subject = null;
 
-        var missingBody = await _emailTypeService.GetEmailType(messageWithoutBody);
+        var (emailTypeBody, unknownMessageBody) = await _emailTypeService.GetEmailType(messageWithoutBody);
         
-        Assert.Null(missingBody);
+        Assert.Null(emailTypeBody);
+        Assert.Null(unknownMessageBody);
         
-        var missingSubject = await _emailTypeService.GetEmailType(messageWithoutSubject);
+        var (emailTypeSubject, unknownMessageSubject) = await _emailTypeService.GetEmailType(messageWithoutSubject);
         
-        Assert.Null(missingSubject);
+        Assert.Null(emailTypeSubject);
+        Assert.Null(unknownMessageSubject);
         
         Assert.Empty(_aiArntIvanService.ReceivedCalls());
         Assert.Empty(_aiPluginTestService.ReceivedCalls());
@@ -89,10 +91,11 @@ public class EmailTypeTests
             }));
         
         var message = GenerateMessage(subject, body);
-
-        var emailType = await _emailTypeService.GetEmailType(message);
+        
+        var (emailType, unknownMessage) = await _emailTypeService.GetEmailType(message);
         
         Assert.IsAssignableFrom<PengetransportenEmailType>(emailType);
+        Assert.Null(unknownMessage);
         
         await _aiArntIvanService.Received(1).Ask<PengetransportenChatResult>(body);
         
@@ -128,10 +131,11 @@ public class EmailTypeTests
             }));
         
         var message = GenerateMessage(subject, body);
-
-        var emailType = await _emailTypeService.GetEmailType(message);
+        
+        var (emailType, unknownMessage) = await _emailTypeService.GetEmailType(message);
         
         Assert.IsAssignableFrom<InnsynEmailType>(emailType);
+        Assert.Null(unknownMessage);
         
         await _aiArntIvanService.Received(1).Ask<InnsynChatResult>(body);
         
@@ -180,10 +184,11 @@ public class EmailTypeTests
         const string fromAddress = "ikkesvar@regionalforvaltning.no";
         
         var message = GenerateMessage(subject, fromAddress: fromAddress);
-
-        var emailType = await _emailTypeService.GetEmailType(message);
+        
+        var (emailType, unknownMessage) = await _emailTypeService.GetEmailType(message);
         
         Assert.IsAssignableFrom<Rf1350EmailType>(emailType);
+        Assert.Null(unknownMessage);
         
         await _aiArntIvanService.Received(1).Ask<Rf1350ChatResult>(message.Body!.Content!);
         

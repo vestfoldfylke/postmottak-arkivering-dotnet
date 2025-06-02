@@ -41,6 +41,8 @@ public class Archive
     private readonly string _blobStorageQueueName;
     private readonly string _mailFolderInboxId;
     private readonly string _mailFolderManualHandlingId;
+    private readonly string _mailFolderMaybeId;
+    private readonly string _mailFolderNoMatchId;
     private readonly string _mailFolderFinishedId;
     private readonly string _postboxUpn;
     private readonly int[] _retryMinutesIntervals;
@@ -68,6 +70,8 @@ public class Archive
         
         _mailFolderInboxId = configuration["POSTMOTTAK_MAIL_FOLDER_INBOX_ID"] ?? throw new NullReferenceException();
         _mailFolderManualHandlingId = configuration["POSTMOTTAK_MAIL_FOLDER_MANUALHANDLING_ID"] ?? throw new NullReferenceException();
+        _mailFolderMaybeId = configuration["POSTMOTTAK_MAIL_FOLDER_ROBOT_LOG_MAYBE_ID"] ?? throw new NullReferenceException();
+        _mailFolderNoMatchId = configuration["POSTMOTTAK_MAIL_FOLDER_ROBOT_LOG_NOMATCH_ID"] ?? throw new NullReferenceException();
         _mailFolderFinishedId = configuration["POSTMOTTAK_MAIL_FOLDER_FINISHED_ID"] ?? throw new NullReferenceException();
         _postboxUpn = configuration["POSTMOTTAK_UPN"] ?? throw new NullReferenceException();
     }
@@ -164,7 +168,7 @@ public class Archive
         var mailBlobs = await _blobService.ListBlobs(_blobStorageQueueName);
 
         List<(IEmailType, FlowStatus)> messagesToHandle = [];
-        List<Message> unknownMessages = [];
+        List<UnknownMessage> unknownMessages = [];
 
         foreach (var message in mailMessages)
         {
@@ -198,11 +202,17 @@ public class Archive
                 continue;
             }
             
-            IEmailType? emailType = await _emailTypeService.GetEmailType(message);
+            var (emailType, unknownMessage) = await _emailTypeService.GetEmailType(message);
+            if (unknownMessage is not null)
+            {
+                unknownMessages.Add(unknownMessage);
+                continue;
+            }
+            
             if (emailType is null)
             {
-                unknownMessages.Add(message);
-                continue;
+                throw new InvalidOperationException(
+                    $"No email type found for message with Id {message.Id}. This should never happen, please check your email types.");
             }
 
             messagesToHandle.Add((emailType, new FlowStatus
@@ -223,7 +233,7 @@ public class Archive
                 MessageId = message.Item2.Message.Id,
                 Type = message.Item2.Type
             }).ToList(),
-            UnhandledMessageIds = unknownMessages.Select(message => message.Id).ToList()
+            UnhandledMessageIds = unknownMessages.Select(unknownMessage => unknownMessage.Message.Id).ToList()
         };
 
         _logger.LogInformation("Handled {HandledMessageCount} messages. {UnknownMessageCount} messages are unhandled",
@@ -305,15 +315,41 @@ public class Archive
         }
     }
 
-    private async Task HandleUnknownMessages(List<Message> messages)
+    private async Task HandleUnknownMessages(List<UnknownMessage> unknownMessages)
     {
-        foreach (var message in messages)
+        foreach (var unknownMessage in unknownMessages)
         {
-            _logger.LogInformation("MessageId {MessageId} is of an unknown type and will be moved to manual handling folder", message.Id);
+            var destinationId = unknownMessage.PartialMatch
+                ? _mailFolderMaybeId
+                : _mailFolderNoMatchId;
+
+            _logger.LogInformation(
+                unknownMessage.PartialMatch
+                    ? "MessageId {MessageId} is partially matched and will be copied to maybe folder"
+                    : "MessageId {MessageId} is not matched and will be copied to no match folder",
+                unknownMessage.Message.Id);
+
+            var newMessage = await _graphService.CopyMailMessage(_postboxUpn, unknownMessage.Message.Id!, destinationId);
+            if (newMessage != null)
+            {
+                newMessage.Body!.Content = $"{unknownMessage.Result}{unknownMessage.Message.Body!.Content}";
+                newMessage.Body!.ContentType = BodyType.Html;
+
+                try
+                {
+                    await _graphService.PatchMailMessage(_postboxUpn, newMessage.Id!, newMessage);
+                }
+                catch (Exception)
+                {
+                    _logger.LogWarning("Hahaha. Hit kommer vi aldri 😬");
+                }
+            }
             
-            await _statisticsService.InsertStatistics("Email with unknown type", message.Id!, "Unknown", message.From?.EmailAddress?.Address);
+            _logger.LogInformation("MessageId {MessageId} is of an unknown type and will be moved to manual handling folder", unknownMessage.Message.Id);
             
-            await _graphService.MoveMailMessage(_postboxUpn, message.Id!, _mailFolderManualHandlingId);
+            await _statisticsService.InsertStatistics("Email with unknown type", unknownMessage.Message.Id!, "Unknown", unknownMessage.Message.From?.EmailAddress?.Address);
+            
+            await _graphService.MoveMailMessage(_postboxUpn, unknownMessage.Message.Id!, _mailFolderManualHandlingId);
         }
     }
     
