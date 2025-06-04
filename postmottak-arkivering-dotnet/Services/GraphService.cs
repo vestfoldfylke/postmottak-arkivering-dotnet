@@ -22,6 +22,7 @@ namespace postmottak_arkivering_dotnet.Services;
 public interface IGraphService
 {
     Task<Message?> CopyMailMessage(string userPrincipalName, string messageId, string destinationFolderId);
+    Task<Message?> CreateMailMessage(string userPrincipalName, string destinationFolderId, Message message);
     Task ForwardMailMessage(string userPrincipalName, string messageId, List<string> recipients, string? comment = null);
     MailAttachment GetMailAttachment(Attachment attachment);
     Task<List<MailFolder>> GetMailFolders(string userPrincipalName);
@@ -70,6 +71,28 @@ public class GraphService : IGraphService
         catch (ODataError ex)
         {
             _logger.LogError(ex, "MessageId {MessageId} failed to be copied to FolderId {DestinationFolderId} in {UserPrincipalName}", messageId, destinationFolderId, userPrincipalName);
+            return null;
+        }
+    }
+
+    public async Task<Message?> CreateMailMessage(string userPrincipalName, string destinationFolderId, Message message)
+    {
+        try
+        {
+            var createdMessage = await _graphClient.Users[userPrincipalName].MailFolders[destinationFolderId].Messages.PostAsync(message,
+                configuration => configuration.Headers.Add(ImmutableIdHeader, ImmutableIdHeaderValue));
+
+            if (createdMessage is null)
+            {
+                throw new InvalidOperationException("Message not created");
+            }
+            
+            _logger.LogInformation("MessageId {MessageId} successfully created in {UserPrincipalName}", createdMessage.Id, userPrincipalName);
+            return createdMessage;
+        }
+        catch (ODataError ex)
+        {
+            _logger.LogError(ex, "Failed to create message for user {UserPrincipalName}. Message: {@Message}", userPrincipalName, message);
             return null;
         }
     }

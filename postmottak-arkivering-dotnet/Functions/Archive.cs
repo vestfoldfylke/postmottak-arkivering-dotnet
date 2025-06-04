@@ -45,6 +45,7 @@ public class Archive
     private readonly string _mailFolderNoMatchId;
     private readonly string _mailFolderFinishedId;
     private readonly string _postboxUpn;
+    private readonly string _postboxLogUpn;
     private readonly int[] _retryMinutesIntervals;
 
     public Archive(IConfiguration configuration,
@@ -74,6 +75,7 @@ public class Archive
         _mailFolderNoMatchId = configuration["POSTMOTTAK_MAIL_FOLDER_ROBOT_LOG_NOMATCH_ID"] ?? throw new NullReferenceException();
         _mailFolderFinishedId = configuration["POSTMOTTAK_MAIL_FOLDER_FINISHED_ID"] ?? throw new NullReferenceException();
         _postboxUpn = configuration["POSTMOTTAK_UPN"] ?? throw new NullReferenceException();
+        _postboxLogUpn = configuration["POSTMOTTAK_LOG_UPN"] ?? throw new NullReferenceException();
     }
 
     [Function("ArchiveEmails")]
@@ -322,27 +324,19 @@ public class Archive
             var destinationId = unknownMessage.PartialMatch
                 ? _mailFolderMaybeId
                 : _mailFolderNoMatchId;
+            
+            unknownMessage.Message.Body!.Content = $"{unknownMessage.Result}{unknownMessage.Message.Body!.Content}";
+            unknownMessage.Message.Body!.ContentType = BodyType.Html;
 
-            _logger.LogInformation(
-                unknownMessage.PartialMatch
-                    ? "MessageId {MessageId} is partially matched and will be copied to maybe folder"
-                    : "MessageId {MessageId} is not matched and will be copied to no match folder",
-                unknownMessage.Message.Id);
-
-            var newMessage = await _graphService.CopyMailMessage(_postboxUpn, unknownMessage.Message.Id!, destinationId);
-            if (newMessage != null)
+            var newMessage =
+                await _graphService.CreateMailMessage(_postboxLogUpn, destinationId, unknownMessage.Message);
+            if (newMessage is not null)
             {
-                newMessage.Body!.Content = $"{unknownMessage.Result}{unknownMessage.Message.Body!.Content}";
-                newMessage.Body!.ContentType = BodyType.Html;
-
-                try
-                {
-                    await _graphService.PatchMailMessage(_postboxUpn, newMessage.Id!, newMessage);
-                }
-                catch (Exception)
-                {
-                    _logger.LogWarning("Hahaha. Hit kommer vi aldri 😬");
-                }
+                _logger.LogInformation(
+                    unknownMessage.PartialMatch
+                        ? "MessageId {MessageId} is partially matched and a copy is created in {LogUpn} @ PartialMatch folder"
+                        : "MessageId {MessageId} is not matched and a copy is created in {LogUpn} @ NoMatch folder",
+                    unknownMessage.Message.Id, _postboxLogUpn);
             }
             
             _logger.LogInformation("MessageId {MessageId} is of an unknown type and will be moved to manual handling folder", unknownMessage.Message.Id);
