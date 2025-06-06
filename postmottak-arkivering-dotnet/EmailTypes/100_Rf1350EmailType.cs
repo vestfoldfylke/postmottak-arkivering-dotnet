@@ -321,7 +321,9 @@ public partial class Rf1350EmailType : IEmailType
                         Role = "Mottaker"
                     }
                 },
-                DocumentDate = DateTime.Now.ToString("O"),
+                DocumentDate = flowStatus.Message.ReceivedDateTime.HasValue
+                    ? flowStatus.Message.ReceivedDateTime.Value.ToString("O")
+                    : DateTime.Now.ToString("O"),
                 Files = new List<object>
                 {
                     new
@@ -510,7 +512,9 @@ public partial class Rf1350EmailType : IEmailType
                     Role = "Avsender"
                 }
             },
-            DocumentDate = DateTime.Now.ToString("O"),
+            DocumentDate = flowStatus.Message.ReceivedDateTime.HasValue
+                ? flowStatus.Message.ReceivedDateTime.Value.ToString("O")
+                : DateTime.Now.ToString("O"),
             Files = new List<object>
             {
                 new
