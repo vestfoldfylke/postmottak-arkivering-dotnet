@@ -199,7 +199,6 @@ public class Archive
 
                 if (flowStatus.RetryAfter is not null && flowStatus.RetryAfter > DateTime.UtcNow)
                 {
-                     _logger.LogInformation("MessageId {MessageId} has retry after {RetryAfter} and will not be handled now", message.Id, flowStatus.RetryAfter);
                      continue;
                 }
                 
@@ -321,6 +320,9 @@ public class Archive
 
                     int retryAfterMinutes = _retryMinutesIntervals[flowStatus.RunCount - 1];
                     flowStatus.RetryAfter = DateTime.UtcNow.AddMinutes(retryAfterMinutes);
+                    _logger.LogWarning(
+                        "MessageId {MessageId} will be retried after {RetryAfterMinutes} minutes ({RetryAfter}). RunCount: {RunCount}",
+                        flowStatus.Message.Id, retryAfterMinutes, flowStatus.RetryAfter, flowStatus.RunCount);
 
                     await UpsertFlowStatusBlob(flowStatus.Message.Id!, flowStatus);
                 }
