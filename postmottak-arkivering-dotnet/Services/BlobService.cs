@@ -17,7 +17,7 @@ public interface IBlobService
     Task<T?> DownloadBlobContent<T>(string blobName, CancellationToken? stoppingToken = null);
     Task<string?> DownloadBlobContentAsString(string blobName, CancellationToken? stoppingToken = null);
     Task<List<BlobItem>> ListBlobs(string blobPath, CancellationToken? stoppingToken = null);
-    Task RemoveBlobs(string blobPath, CancellationToken? stoppingToken = null);
+    Task<int> RemoveBlobs(string blobPath, CancellationToken? stoppingToken = null);
     Task UploadBlob(string blobName, string content, CancellationToken? stoppingToken = null);
     Task UploadBlobFromStream(string blobName, byte[] bytes, CancellationToken? stoppingToken = null);
 }
@@ -63,7 +63,7 @@ public class BlobService : IBlobService
         return blobItems;
     }
 
-    public async Task RemoveBlobs(string blobPath, CancellationToken? stoppingToken = null)
+    public async Task<int> RemoveBlobs(string blobPath, CancellationToken? stoppingToken = null)
     {
         var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
         
@@ -72,6 +72,8 @@ public class BlobService : IBlobService
         {
             await containerClient.DeleteBlobIfExistsAsync(blob.Name, DeleteSnapshotsOption.IncludeSnapshots, null, stoppingToken ?? CancellationToken.None);
         }
+        
+        return blobs.Count;
     }
 
     public async Task UploadBlob(string blobName, string content,

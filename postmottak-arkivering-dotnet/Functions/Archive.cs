@@ -388,8 +388,12 @@ public class Archive
         
         try
         {
-            await _blobService.RemoveBlobs(blobPath);
-            _metricsService.Count("Postmottak_Arkivering_FlowStatusBlob_Removed", "FlowStatus blob removed", ("EmailType", flowType), ("Result", "Success"));
+            var blobCount = await _blobService.RemoveBlobs(blobPath);
+            
+            if (blobCount > 0)
+            {
+                _metricsService.Count("Postmottak_Arkivering_FlowStatusBlob_Removed", "FlowStatus blob removed", blobCount, ("EmailType", flowType), ("Result", "Success"));
+            }
         }
         catch (Exception ex)
         {
