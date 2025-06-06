@@ -10,6 +10,7 @@ using postmottak_arkivering_dotnet.EmailTypes;
 using postmottak_arkivering_dotnet.Services;
 using postmottak_arkivering_dotnet.Services.Ai;
 using Vestfold.Extensions.Archive.Services;
+using Vestfold.Extensions.Metrics.Services;
 
 namespace postmottak_arkivering_dotnet_tests;
 
@@ -19,6 +20,7 @@ public class EmailTypeTests
     private readonly IAiPluginTestService _aiPluginTestService;
     private readonly IArchiveService _archiveService;
     private readonly IGraphService _graphService;
+    private readonly IMetricsService _metricsService;
     private readonly IServiceProvider _serviceProvider;
 
     private readonly EmailTypeService _emailTypeService;
@@ -29,6 +31,7 @@ public class EmailTypeTests
         _aiPluginTestService = Substitute.For<IAiPluginTestService>();
         _archiveService = Substitute.For<IArchiveService>();
         _graphService = Substitute.For<IGraphService>();
+        _metricsService = Substitute.For<IMetricsService>();
         _serviceProvider = Substitute.For<IServiceProvider>();
         
         var logger = Substitute.For<ILogger<EmailTypeService>>();
@@ -42,6 +45,7 @@ public class EmailTypeTests
         _serviceProvider.GetService(typeof(IArchiveService)).Returns(_archiveService);
         _serviceProvider.GetService(typeof(IConfiguration)).Returns(configuration);
         _serviceProvider.GetService(typeof(IGraphService)).Returns(_graphService);
+        _serviceProvider.GetService(typeof(IMetricsService)).Returns(_metricsService);
         
         _emailTypeService = new EmailTypeService(logger, _serviceProvider);
     }

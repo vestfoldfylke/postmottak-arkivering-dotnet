@@ -13,6 +13,7 @@ using postmottak_arkivering_dotnet.Contracts.Email;
 using postmottak_arkivering_dotnet.Services;
 using postmottak_arkivering_dotnet.Services.Ai;
 using postmottak_arkivering_dotnet.Utils;
+using Vestfold.Extensions.Metrics.Services;
 
 namespace postmottak_arkivering_dotnet.EmailTypes;
 
@@ -20,6 +21,7 @@ public class InnsynEmailType : IEmailType
 {
     private readonly IAiArntIvanService _aiArntIvanService;
     private readonly IGraphService _graphService;
+    private readonly IMetricsService _metricsService;
 
     private readonly string _postmottakUpn = "";
     private readonly string[] _subjects = [
@@ -39,6 +41,7 @@ public class InnsynEmailType : IEmailType
     {
         _aiArntIvanService = serviceProvider.GetService<IAiArntIvanService>()!;
         _graphService = serviceProvider.GetService<IGraphService>()!;
+        _metricsService = serviceProvider.GetService<IMetricsService>()!;
         
         var configuration = serviceProvider.GetService<IConfiguration>()!;
         if (Enabled)
@@ -65,6 +68,7 @@ public class InnsynEmailType : IEmailType
         if (result is null || !result.IsInnsyn)
         {
             var resultString = JsonSerializer.Serialize(result);
+            _metricsService.Count("Postmottak_Arkivering_EmailType_Maybe_Match", "EmailType hit a maybe match", ("EmailType", nameof(InnsynEmailType)));
             return new EmailTypeMatchResult
             {
                 Matched = EmailTypeMatched.Maybe,
@@ -74,6 +78,7 @@ public class InnsynEmailType : IEmailType
 
         _result = result;
         
+        _metricsService.Count("Postmottak_Arkivering_EmailType_Match", "EmailType hit a maybe match", ("EmailType", nameof(InnsynEmailType)));
         return new EmailTypeMatchResult
         {
             Matched = EmailTypeMatched.Yes
@@ -100,6 +105,8 @@ public class InnsynEmailType : IEmailType
                                     <br />Ta kontakt med arkivet dersom du mener at dette er feil.";
         
         await _graphService.ForwardMailMessage(_postmottakUpn, flowStatus.Message.Id!, _toRecipients, HelperTools.GenerateHtmlBox(forwardMessage));
+        
+        _metricsService.Count("Postmottak_Arkivering_Email_Forwarded", "Email forwarded", ("EmailType", nameof(InnsynEmailType)));
         
         return $"Denne e-posten er håndtert av KI på begrunnelse: {_result.Description}, og videresendt til <ul>{string.Join("", _toRecipients.Select(recipient => $"<li>{recipient}</li>"))}</ul>";
     }

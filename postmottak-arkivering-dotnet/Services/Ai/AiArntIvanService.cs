@@ -6,6 +6,7 @@ using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
 using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
 using postmottak_arkivering_dotnet.Utils;
+using Vestfold.Extensions.Metrics.Services;
 
 namespace postmottak_arkivering_dotnet.Services.Ai;
 
@@ -17,6 +18,8 @@ public interface IAiArntIvanService
 
 public class AiArntIvanService : IAiArntIvanService
 {
+    private readonly IMetricsService _metricsService;
+    
     private readonly Dictionary<string, ChatCompletionAgent> _agents = [];
     
     private const LogLevel AgentLogLevel = LogLevel.Information;
@@ -27,9 +30,16 @@ public class AiArntIvanService : IAiArntIvanService
                                              
                                              Dersom du ikke finner en sannsynlig verdi for en property, setter du den til null
                                              """;
+
+    public AiArntIvanService(IMetricsService metricsService)
+    {
+        _metricsService = metricsService;
+    }
     
     public async Task<(ChatHistory, T?)> Ask<T>(string prompt, ChatHistory? chatHistory = null)
     {
+        _metricsService.Count("Postmottak_Arkivering_ArntIvan_Ask", "ArntIvan Ask called", ("EmailType", typeof(T).Name));
+        
         ChatCompletionAgent agent = GetOrCreateAgent<T>();
         
         var history = await agent.InvokeAgent(prompt, typeof(T).Name, chatHistory);
@@ -39,6 +49,8 @@ public class AiArntIvanService : IAiArntIvanService
 
     public async Task<string> FunFact()
     {
+        _metricsService.Count("Postmottak_Arkivering_ArntIvan_FunFact", "ArntIvan FunFact called");
+        
         ChatCompletionAgent agent = GetOrCreateAgent<FunFactChatResult>();
         
         var history = await agent.InvokeAgent("Gi meg en fun fact", nameof(FunFactChatResult));

@@ -13,6 +13,7 @@ using postmottak_arkivering_dotnet.Contracts.Email;
 using postmottak_arkivering_dotnet.Services;
 using postmottak_arkivering_dotnet.Services.Ai;
 using Vestfold.Extensions.Archive.Services;
+using Vestfold.Extensions.Metrics.Services;
 
 namespace postmottak_arkivering_dotnet.EmailTypes;
 
@@ -21,6 +22,7 @@ public class LoyvegarantiEmailType : IEmailType
     private readonly IAiArntIvanService _aiArntIvan;
     private readonly IArchiveService _archiveService;
     private readonly IGraphService _graphService;
+    private readonly IMetricsService _metricsService;
     
     private const string FromAddress = "post@matrixinsurance.no";
     
@@ -52,6 +54,7 @@ public class LoyvegarantiEmailType : IEmailType
         _aiArntIvan = serviceProvider.GetService<IAiArntIvanService>()!;
         _archiveService = serviceProvider.GetRequiredService<IArchiveService>();
         _graphService = serviceProvider.GetRequiredService<IGraphService>();
+        _metricsService = serviceProvider.GetRequiredService<IMetricsService>();
         
         IConfiguration configuration = serviceProvider.GetRequiredService<IConfiguration>();
         
@@ -98,6 +101,7 @@ public class LoyvegarantiEmailType : IEmailType
         var (_, result) = await _aiArntIvan.Ask<LoyvegarantiChatResult>($"{message.Subject!} - {message.Body!.Content!}");
         if (result is null || string.IsNullOrEmpty(result.OrganizationName) || string.IsNullOrEmpty(result.OrganizationNumber))
         {
+            _metricsService.Count("Postmottak_Arkivering_EmailType_Maybe_Match", "EmailType hit a maybe match", ("EmailType", nameof(LoyvegarantiEmailType)));
             var resultString = JsonSerializer.Serialize(result);
             return new EmailTypeMatchResult
             {
@@ -108,6 +112,7 @@ public class LoyvegarantiEmailType : IEmailType
 
         _result = result;
         
+        _metricsService.Count("Postmottak_Arkivering_EmailType_Match", "EmailType hit a match", ("EmailType", nameof(LoyvegarantiEmailType)));
         return new EmailTypeMatchResult
         {
             Matched = EmailTypeMatched.Yes
@@ -169,6 +174,8 @@ public class LoyvegarantiEmailType : IEmailType
                     SubArchive = "Løyver",
                     Title = $"Drosjeløyve - {_result.OrganizationName} - {_result.OrganizationNumber}"
                 });
+                
+                _metricsService.Count("Postmottak_Arkivering_CreateCase", "Archive case created");
             }
 
             flowStatus.Archive.CaseNumber = activeCase["CaseNumber"]!.ToString();
@@ -231,6 +238,7 @@ public class LoyvegarantiEmailType : IEmailType
             });
             
             var document = await _archiveService.CreateDocument(payload);
+            _metricsService.Count("Postmottak_Arkivering_CreateDocument", "Archive document created", ("EmailType", nameof(LoyvegarantiEmailType)));
 
             flowStatus.Archive.DocumentNumber = document["DocumentNumber"]!.ToString();
         }

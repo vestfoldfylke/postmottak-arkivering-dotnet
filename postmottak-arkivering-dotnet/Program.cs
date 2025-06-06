@@ -8,11 +8,13 @@ using postmottak_arkivering_dotnet.Middleware;
 using postmottak_arkivering_dotnet.Services;
 using postmottak_arkivering_dotnet.Services.Ai;
 using postmottak_arkivering_dotnet.Utils;
+using Prometheus;
 using Vestfold.Extensions.Archive;
 using Vestfold.Extensions.Archive.Services;
 using Vestfold.Extensions.Authentication;
 using Vestfold.Extensions.Authentication.Services;
 using Vestfold.Extensions.Logging;
+using Vestfold.Extensions.Metrics;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
@@ -23,12 +25,16 @@ builder.UseMiddleware<ErrorHandlingMiddleware>();
 builder.Logging.AddVestfoldLogging();
 builder.Services.AddVestfoldAuthentication();
 builder.Services.AddVestfoldArchive();
+builder.Services.AddVestfoldMetrics();
 
 /*Serilog.Debugging.SelfLog.Enable(msg =>
 {
      Debug.WriteLine($"Æ har dreti i bidet: {msg}");
      Console.WriteLine($"Æ har dreti i bidet: {msg}");
 });*/
+
+// Configure the service container to collect Prometheus metrics from all registered HttpClients
+builder.Services.UseHttpClientMetrics();
 
 builder.Services.AddSingleton<IEmailTypeService, EmailTypeService>();
 builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();

@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph.Models;
 using postmottak_arkivering_dotnet.Contracts.Email;
 using postmottak_arkivering_dotnet.Utils;
+using Vestfold.Extensions.Metrics.Services;
 
 namespace postmottak_arkivering_dotnet.Services;
 
@@ -19,6 +21,7 @@ public interface IEmailTypeService
 public class EmailTypeService : IEmailTypeService
 {
     private readonly ILogger<EmailTypeService> _logger;
+    private readonly IMetricsService _metricsService;
     private readonly IServiceProvider _serviceProvider;
 
     private readonly List<Type> _emailTypes;
@@ -29,6 +32,8 @@ public class EmailTypeService : IEmailTypeService
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
+
+        _metricsService = serviceProvider.GetRequiredService<IMetricsService>();
 
         _emailTypes = Assembly.GetExecutingAssembly().GetTypes()
             .Where(t => typeof(IEmailType).IsAssignableFrom(t) && !t.IsAbstract && CreateEmailTypeInstance(t).Enabled)
@@ -55,12 +60,14 @@ public class EmailTypeService : IEmailTypeService
             if (matchResult.Matched == EmailTypeMatched.Yes)
             {
                 _logger.LogInformation("Matched {EmailType} for MessageId {MessageId}", emailType.Name, message.Id);
+                _metricsService.Count("Postmottak_Arkivering_GetEmailType", "Determine which email type to use", ("EmailType", emailType.Name), ("Result", "Yes"));
                 return (emailTypeInstance, null);
             }
             
             if (matchResult.Matched == EmailTypeMatched.Maybe)
             {
                 _logger.LogDebug("Partially matched {EmailType} for MessageId {MessageId}", emailType.Name, message.Id);
+                _metricsService.Count("Postmottak_Arkivering_GetEmailType", "Determine which email type to use", ("EmailType", emailType.Name), ("Result", "Maybe"));
                 if (matchResult.Result != null)
                 {
                     partialText += $"<b>{emailType.Name}</b>: {matchResult.Result}<br /><br />";

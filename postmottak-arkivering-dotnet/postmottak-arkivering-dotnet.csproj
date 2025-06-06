@@ -30,6 +30,7 @@
         <PackageReference Include="Vestfold.Extensions.Archive" Version="1.0.0" />
         <PackageReference Include="Vestfold.Extensions.Authentication" Version="1.0.0" />
         <PackageReference Include="Vestfold.Extensions.Logging" Version="1.0.0" />
+        <PackageReference Include="Vestfold.Extensions.Metrics" Version="1.0.0" />
     </ItemGroup>
     <ItemGroup>
         <None Update="host.json">

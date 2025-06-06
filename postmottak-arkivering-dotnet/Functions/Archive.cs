@@ -23,6 +23,7 @@ using postmottak_arkivering_dotnet.Services;
 using postmottak_arkivering_dotnet.Services.Ai;
 using postmottak_arkivering_dotnet.Utils;
 using Serilog.Context;
+using Vestfold.Extensions.Metrics.Services;
 using FromBodyAttribute = Microsoft.Azure.Functions.Worker.Http.FromBodyAttribute;
 
 namespace postmottak_arkivering_dotnet.Functions;
@@ -35,6 +36,7 @@ public class Archive
     private readonly IEmailTypeService _emailTypeService;
     private readonly IGraphService _graphService;
     private readonly ILogger<Archive> _logger;
+    private readonly IMetricsService _metricsService;
     private readonly IStatisticsService _statisticsService;
     
     private readonly string _blobStorageFailedName;
@@ -55,6 +57,7 @@ public class Archive
         IEmailTypeService emailTypeService,
         IGraphService graphService,
         ILogger<Archive> logger,
+        IMetricsService metricsService,
         IStatisticsService statisticsService)
     {
         _aiArntIvanService = aiArntIvanService;
@@ -64,6 +67,7 @@ public class Archive
         _graphService = graphService;
         _logger = logger;
         _statisticsService = statisticsService;
+        _metricsService = metricsService;
 
         _blobStorageFailedName = configuration["BLOB_STORAGE_FAILED_NAME"] ?? "failed";
         _blobStorageQueueName = configuration["BLOB_STORAGE_QUEUE_NAME"] ?? "queue";
@@ -90,7 +94,7 @@ public class Archive
     }
     
     [Function("GetAndHandleEmailsTimer")]
-    public async Task GetAndHandleEmailsTrigger([TimerTrigger("0 0 */1 * * *")] TimerInfo myTimer)
+    public async Task GetAndHandleEmailsTrigger([TimerTrigger("0 */5 * * * *")] TimerInfo myTimer)
     {
         await GetAndHandleEmails();
     }
@@ -188,6 +192,7 @@ public class Archive
                 if (flowStatus.SendToArkivarerForHandling)
                 {
                     // TODO: Remove with time
+                    _metricsService.Count("Postmottak_Arkivering_SendToArkivarerForHandling", "Send to arkivarer for handling", ("EmailType", flowStatus.Type));
                     _logger.LogError("Hit kommer vi absolutt aldri! MessageId {MessageId} is unhandelable. Send to arkivarer for handling", message.Id);
                     continue;
                 }
@@ -256,6 +261,8 @@ public class Archive
                 {
                     _logger.LogInformation("Starting {EmailType}.HandleMessage for MessageId {MessageId}");
                     var handledMessage = await emailType.HandleMessage(flowStatus);
+                    _metricsService.Count("Postmottak_Arkivering_EmailType_Handled", "EmailType handled", ("EmailType", flowStatus.Type), ("Result", "Success"));
+                    
                     var funFact = emailType.IncludeFunFact ? await _aiArntIvanService.FunFact() : string.Empty;
                     var funFactMessage = emailType.IncludeFunFact && !string.IsNullOrEmpty(funFact)
                         ? $"<br /><b>FunFact</b>: {funFact}"
@@ -292,6 +299,8 @@ public class Archive
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error handling MessageId {MessageId} with {EmailType}");
+                    _metricsService.Count("Postmottak_Arkivering_EmailType_Handled", "EmailType handled", ("EmailType", flowStatus.Type), ("Result", "Failed"));
+                    
                     flowStatus.ErrorMessage = ex.Message;
                     flowStatus.ErrorStack = ex.StackTrace;
                     flowStatus.RunCount++;
@@ -300,6 +309,8 @@ public class Archive
                     {
                         _logger.LogWarning(
                             "MessageId {MessageId} is unhandelable. Message will be moved to manual handling folder and arkivarer must do something!");
+                        _metricsService.Count("Postmottak_Arkivering_EmailType_Unhandelable", "EmailType unhandelable", ("EmailType", flowStatus.Type));
+                        
                         await _graphService.MoveMailMessage(_postboxUpn, flowStatus.Message.Id!,
                             _mailFolderManualHandlingId);
 
@@ -327,6 +338,8 @@ public class Archive
             
             unknownMessage.Message.Body!.Content = $"{unknownMessage.Result}{unknownMessage.Message.Body!.Content}";
             unknownMessage.Message.Body!.ContentType = BodyType.Html;
+            
+            _metricsService.Count("Postmottak_Arkivering_EmailType_Unknown", "EmailType unknown", ("PartialMatch", unknownMessage.PartialMatch ? "Yes" : "No"));
 
             var newMessage =
                 await _graphService.CreateMailMessage(_postboxLogUpn, destinationId, unknownMessage.Message);
@@ -358,10 +371,13 @@ public class Archive
                     IndentSize = 2,
                     WriteIndented = true
                 }));
+            
+            _metricsService.Count("Postmottak_Arkivering_FlowStatusBlob_Upserted", "FlowStatus blob upserted", ("EmailType", flowStatus.Type), ("Result", "Success"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to serialize flowStatus or upload blob for MessageId {MessageId}. Things might happen multiple times", messageId);
+            _metricsService.Count("Postmottak_Arkivering_FlowStatusBlob_Upserted", "FlowStatus blob upserted", ("EmailType", flowStatus.Type), ("Result", "Failed"));
         }
     }
     
@@ -373,10 +389,12 @@ public class Archive
         try
         {
             await _blobService.RemoveBlobs(blobPath);
+            _metricsService.Count("Postmottak_Arkivering_FlowStatusBlob_Removed", "FlowStatus blob removed", ("EmailType", flowType), ("Result", "Success"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to remove blob with BlobPath {BlobPath}. Blob might be hold on (be strong) to longer than needed. Check blob storage container retention", blobPath);
+            _metricsService.Count("Postmottak_Arkivering_FlowStatusBlob_Removed", "FlowStatus blob removed", ("EmailType", flowType), ("Result", "Failed"));
         }
     }
 }
