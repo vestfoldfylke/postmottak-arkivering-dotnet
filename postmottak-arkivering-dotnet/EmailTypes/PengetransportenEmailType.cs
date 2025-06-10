@@ -30,9 +30,6 @@ public class PengetransportenEmailType : IEmailType
         "Inkasso",
         "Inkassovarsel",
         "Purring",
-        "Kvittering",
-        "Betaling",
-        "Utskrift",
         "Kreditnota",
         "Debetnota",
         "Proformafaktura",
@@ -50,8 +47,6 @@ public class PengetransportenEmailType : IEmailType
         "Refusjonskrav",
         "Bill",
         "Invoice",
-        "Receipt",
-        "Payment",
         "Credit Note",
         "Debit Note",
         "Proforma Invoice",
@@ -97,7 +92,16 @@ public class PengetransportenEmailType : IEmailType
     {
         await Task.CompletedTask;
 
-        if (!_subjects.Any(subject => message.Subject!.Contains(subject, StringComparison.OrdinalIgnoreCase)))
+        if (!HelperTools.IsToPostmottak(message, _postmottakUpn))
+        {
+            return new EmailTypeMatchResult
+            {
+                Matched = EmailTypeMatched.No,
+                Result = "E-posten er ikke sendt direkte til postmottaket"
+            };
+        }
+
+        if (!_subjects.Any(subject => message.Subject!.Split(' ').Any(messageSubjectPart => messageSubjectPart.Equals(subject, StringComparison.OrdinalIgnoreCase))))
         {
             return new EmailTypeMatchResult
             {

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -76,8 +77,73 @@ public class EmailTypeTests
     }
     
     [Theory]
+    [InlineData("Mail angående kvittering", "Kvittering er vedlagt")]
+    [InlineData("Jeg har fått en betaling", "Betaling er sendt i posten")]
+    [InlineData("Jeg har en utskrift", "Utskrift må betales snarest")]
+    public async Task GetEmailType_Should_Return_Null_When_Subjects_Doesnt_Equal_PengetransportenEmailType(string subject, string body)
+    {
+        if (!new PengetransportenEmailType(_serviceProvider).Enabled)
+        {
+            Assert.True(true);
+            return;
+        }
+        
+        var message = GenerateMessage(subject, body);
+        
+        var (emailType, unknownMessage) = await _emailTypeService.GetEmailType(message);
+        
+        Assert.Null(emailType);
+        Assert.NotNull(unknownMessage);
+        
+        await _aiArntIvanService.DidNotReceive().Ask<PengetransportenChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
+        await _aiArntIvanService.DidNotReceive().Ask<FunFactChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
+        await _aiArntIvanService.DidNotReceive().Ask<GeneralChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
+        await _aiArntIvanService.DidNotReceive().Ask<InnsynChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
+        await _aiArntIvanService.DidNotReceive().Ask<LoyvegarantiChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
+        await _aiArntIvanService.DidNotReceive().Ask<PluginTestChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
+        await _aiArntIvanService.DidNotReceive().Ask<Rf1350ChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
+        await _aiArntIvanService.DidNotReceive().FunFact();
+        
+        Assert.Empty(_aiPluginTestService.ReceivedCalls());
+        Assert.Empty(_archiveService.ReceivedCalls());
+        Assert.Empty(_graphService.ReceivedCalls());
+    }
+    
+    [Theory]
+    [InlineData("rolf@rolf.rolf")]
+    [InlineData("rolf@rolf.rolf", "test@test.test")]
+    public async Task GetEmailType_Should_Return_Null_When_ToAddress_Is_not_only_PengetransportenEmailType(params string[] toAddresses)
+    {
+        if (!new PengetransportenEmailType(_serviceProvider).Enabled)
+        {
+            Assert.True(true);
+            return;
+        }
+        
+        var message = GenerateMessage("Mail angående debetnota", "Debetnota er vedlagt", toAddresses: toAddresses);
+        
+        var (emailType, unknownMessage) = await _emailTypeService.GetEmailType(message);
+        
+        Assert.Null(emailType);
+        Assert.NotNull(unknownMessage);
+        
+        await _aiArntIvanService.DidNotReceive().Ask<PengetransportenChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
+        await _aiArntIvanService.DidNotReceive().Ask<FunFactChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
+        await _aiArntIvanService.DidNotReceive().Ask<GeneralChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
+        await _aiArntIvanService.DidNotReceive().Ask<InnsynChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
+        await _aiArntIvanService.DidNotReceive().Ask<LoyvegarantiChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
+        await _aiArntIvanService.DidNotReceive().Ask<PluginTestChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
+        await _aiArntIvanService.DidNotReceive().Ask<Rf1350ChatResult>(Arg.Any<string>(), Arg.Any<ChatHistory>());
+        await _aiArntIvanService.DidNotReceive().FunFact();
+        
+        Assert.Empty(_aiPluginTestService.ReceivedCalls());
+        Assert.Empty(_archiveService.ReceivedCalls());
+        Assert.Empty(_graphService.ReceivedCalls());
+    }
+    
+    [Theory]
     [InlineData("Mail angående debetnota", "Debetnota er vedlagt")]
-    [InlineData("Jeg har fått et inkassobrev", "Inkassovarsel er sendt i posten")]
+    [InlineData("Jeg har fått et inkassovarsel", "Inkassovarsel er sendt i posten")]
     [InlineData("Faktura for betaling", "Faktura må betales snarest")]
     public async Task GetEmailType_Should_Return_PengetransportenEmailType(string subject, string body)
     {
@@ -94,7 +160,7 @@ public class EmailTypeTests
                 Description = "Whatever"
             }));
         
-        var message = GenerateMessage(subject, body);
+        var message = GenerateMessage(subject, body, toAddresses: [ "test@test.test" ]);
         
         var (emailType, unknownMessage) = await _emailTypeService.GetEmailType(message);
         
@@ -209,7 +275,7 @@ public class EmailTypeTests
         Assert.Empty(_graphService.ReceivedCalls());
     }
 
-    private static Message GenerateMessage(string? subject = null, string? body = null, string? fromAddress = null) =>
+    private static Message GenerateMessage(string? subject = null, string? body = null, string? fromAddress = null, string[]? toAddresses = null) =>
         new Message
         {
             Body = new ItemBody
@@ -223,6 +289,13 @@ public class EmailTypeTests
                 {
                     Address = fromAddress ?? "whatever@whoever.no"
                 }
-            }
+            },
+            ToRecipients = toAddresses?.Select(to => new Recipient
+            {
+                EmailAddress = new EmailAddress
+                {
+                    Address = to
+                }
+            }).ToList()
         };
 }

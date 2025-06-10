@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using Microsoft.Graph.Models;
 
 namespace postmottak_arkivering_dotnet.Utils;
 
@@ -13,4 +15,8 @@ public static class HelperTools
     
     public static DateTimeOffset GetDateTimeOffset(DateTime? dateTime = null, string timeZone = "Europe/Oslo") =>
         TimeZoneInfo.ConvertTime(dateTime ?? DateTime.Now, TimeZoneInfo.FindSystemTimeZoneById(timeZone));
+
+    public static bool IsToPostmottak(Message message, string postmottakUpn) =>
+        message.ToRecipients is { Count: 1 } &&
+        message.ToRecipients.Any(recipient => recipient.EmailAddress?.Address == postmottakUpn);
 }
