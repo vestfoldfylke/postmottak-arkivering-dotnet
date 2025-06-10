@@ -179,7 +179,8 @@ public class GraphService : IGraphService
         {
             config.Headers.Add(ImmutableIdHeader, ImmutableIdHeaderValue);
             config.QueryParameters.Expand = expandedProperties;
-            config.QueryParameters.Orderby = ["receivedDateTime desc"];
+            config.QueryParameters.Orderby = ["receivedDateTime asc"];
+            config.QueryParameters.Top = 100;
         };
         
         var mailMessages = await _graphClient.Users[userPrincipalName].MailFolders[folderId].Messages.GetAsync(options);
@@ -188,6 +189,7 @@ public class GraphService : IGraphService
             return [];
         }
 
+        _logger.LogInformation("Retrieved {Count} mail messages from {UserPrincipalName} in folder {FolderId}", mailMessages.Value.Count, userPrincipalName, folderId);
         return mailMessages.Value;
     }
 
