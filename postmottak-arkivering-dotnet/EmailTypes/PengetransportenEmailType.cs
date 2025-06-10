@@ -25,6 +25,7 @@ public class PengetransportenEmailType : IEmailType
 
     private readonly string _postmottakUpn = "";
     private readonly string[] _subjects = [
+        "e-Faktura",
         "Faktura",
         "Regning",
         "Inkasso",
