@@ -438,7 +438,7 @@ public partial class Rf1350EmailType : IEmailType
             await CreateDocument(flowStatus, "Anmodning om utbetaling");
         }
 
-        string caseHandle = flowStatus.Archive.CaseCreated
+        var caseHandle = flowStatus.Archive.CaseCreated
             ? "Sak ble også automatisk opprettet siden robåten ikke fant en eksisterende sak."
             : "Robåten fant en eksisterende sak og arkiverte dokumentet i denne.";
         return $"Anmodning om utbetaling er automatisk arkivert med dokumentnummer {flowStatus.Archive.DocumentNumber}. {caseHandle}";

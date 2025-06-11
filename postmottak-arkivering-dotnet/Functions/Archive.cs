@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Graph.Models;
 using Microsoft.OpenApi.Models;
 using postmottak_arkivering_dotnet.Contracts;
@@ -38,6 +39,7 @@ public class Archive
     private readonly ILogger<Archive> _logger;
     private readonly IMetricsService _metricsService;
     private readonly IStatisticsService _statisticsService;
+    private readonly IHostEnvironment _hostEnvironment;
     
     private readonly string _blobStorageFailedName;
     private readonly string _blobStorageQueueName;
@@ -58,7 +60,8 @@ public class Archive
         IGraphService graphService,
         ILogger<Archive> logger,
         IMetricsService metricsService,
-        IStatisticsService statisticsService)
+        IStatisticsService statisticsService,
+        IHostEnvironment hostEnvironment)
     {
         _aiArntIvanService = aiArntIvanService;
         _aiPluginTestService = aiPluginTestService;
@@ -68,6 +71,7 @@ public class Archive
         _logger = logger;
         _statisticsService = statisticsService;
         _metricsService = metricsService;
+        _hostEnvironment = hostEnvironment;
 
         _blobStorageFailedName = configuration["BLOB_STORAGE_FAILED_NAME"] ?? "failed";
         _blobStorageQueueName = configuration["BLOB_STORAGE_QUEUE_NAME"] ?? "queue";
@@ -96,6 +100,12 @@ public class Archive
     [Function("GetAndHandleEmailsTimer")]
     public async Task GetAndHandleEmailsTrigger([TimerTrigger("0 */5 * * * *")] TimerInfo myTimer)
     {
+        if (_hostEnvironment.IsDevelopment())
+        {
+            _logger.LogInformation("Development environment detected, skipping GetAndHandleEmailsTimer email handling.");
+            return;
+        }
+        
         await GetAndHandleEmails();
     }
     
