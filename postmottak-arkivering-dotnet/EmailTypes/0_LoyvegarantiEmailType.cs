@@ -28,7 +28,8 @@ public class LoyvegarantiEmailType : IEmailType
     
     private readonly List<string> _caseStatuses = [
         "Under behandling",
-        "Reservert"
+        "Reservert",
+        "Avsluttet"
     ];
     
     private readonly string[] _subjects = [
@@ -36,15 +37,28 @@ public class LoyvegarantiEmailType : IEmailType
         "Org.nr"
     ];
 
+    private readonly string[] _blackListedSubjects = [
+        "Fwd:",
+        "FW:",
+        "Forward:",
+        "Videresend:"
+    ];
+    
+    private readonly string[] _titles = [
+        "Løyvegaranti",
+        "Endring av løyvegaranti",
+        "Opphør av løyvegaranti"
+    ];
+
     private const string MatrixInsuranceReferenceNumber = "966431695";
 
-    private readonly string _documentCategory = "";
+    private readonly string _epostInnDocumentCategory = "";
     private readonly string _postmottakUpn = "";
     private readonly string _responsibleEnterpriseRecno = "";
 
     private LoyvegarantiChatResult? _result;
 
-    public bool Enabled => false;
+    public bool Enabled => true;
     public bool IncludeFunFact => false;
     public string Result => JsonSerializer.Serialize(_result, new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
     public string Title => "Løyvegaranti";
@@ -60,7 +74,7 @@ public class LoyvegarantiEmailType : IEmailType
         
         if (Enabled)
         {
-            _documentCategory = configuration["ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN"] ?? throw new NullReferenceException();
+            _epostInnDocumentCategory = configuration["ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN"] ?? throw new NullReferenceException();
             _postmottakUpn = configuration["POSTMOTTAK_UPN"] ?? throw new NullReferenceException();
             _responsibleEnterpriseRecno = configuration["EMAILTYPE_LOYVEGARANTI_RESPONSIBLE_ENTERPRISE_RECNO"] ??
                                           throw new NullReferenceException();
@@ -98,8 +112,19 @@ public class LoyvegarantiEmailType : IEmailType
             };
         }
         
+        if (_blackListedSubjects.Any(subject => message.Subject!.StartsWith(subject, StringComparison.OrdinalIgnoreCase)))
+        {
+            return new EmailTypeMatchResult
+            {
+                Matched = EmailTypeMatched.No,
+                Result = $"E-postens emne inneholder en ugyldig prefix for {Title.ToLower()}. Ugyldige prefixer er: {string.Join(", ", _blackListedSubjects)}"
+            };
+        }
+        
         var (_, result) = await _aiArntIvan.Ask<LoyvegarantiChatResult>($"{message.Subject!} - {message.Body!.Content!}");
-        if (result is null || string.IsNullOrEmpty(result.OrganizationName) || string.IsNullOrEmpty(result.OrganizationNumber))
+        if (result is null || string.IsNullOrEmpty(result.OrganizationName) ||
+            string.IsNullOrEmpty(result.OrganizationNumber) || string.IsNullOrEmpty(result.Title) ||
+            !_titles.Any(title => result.Title.Contains(title, StringComparison.OrdinalIgnoreCase)))
         {
             _metricsService.Count("Postmottak_Arkivering_EmailType_Maybe_Match", "EmailType hit a maybe match", ("EmailType", nameof(LoyvegarantiEmailType)));
             var resultString = JsonSerializer.Serialize(result);
@@ -145,10 +170,29 @@ public class LoyvegarantiEmailType : IEmailType
 
             var activeCase = cases.FirstOrDefault(c => c is not null && _caseStatuses.Contains(c["Status"]!.ToString()));
 
+            if (activeCase is not null && activeCase["Status"]?.ToString() == "Avsluttet")
+            {
+                var updatedCase = await _archiveService.UpdateCase(new
+                {
+                    CaseNumber = activeCase["CaseNumber"]!.ToString(),
+                    Status = "B"
+                });
+                
+                if (updatedCase is null)
+                {
+                    _metricsService.Count("Postmottak_Arkivering_UpdateCase", "Update case called", ("Result", "Failed"));
+                    throw new InvalidOperationException("Failed to update case status to 'B'");
+                }
+                
+                _metricsService.Count("Postmottak_Arkivering_UpdateCase", "Update case called", ("Result", "Success"));
+            }
+            
             if (activeCase is null)
             {
                 activeCase = await _archiveService.CreateCase(new
                 {
+                    AccessCode = "U",
+                    AccessGroup = "Alle",
                     ArchiveCodes = new object[]
                     {
                         new {
@@ -175,6 +219,8 @@ public class LoyvegarantiEmailType : IEmailType
                     Title = $"Drosjeløyve - {_result.OrganizationName} - {_result.OrganizationNumber}"
                 });
                 
+                flowStatus.Archive.CaseCreated = true;
+                
                 _metricsService.Count("Postmottak_Arkivering_CreateCase", "Archive case created");
             }
 
@@ -198,7 +244,7 @@ public class LoyvegarantiEmailType : IEmailType
             {
                 Archive = "Saksdokument",
                 flowStatus.Archive.CaseNumber,
-                Category = _documentCategory,
+                Category = _epostInnDocumentCategory,
                 Contacts = new object[]
                 {
                     new
@@ -207,7 +253,9 @@ public class LoyvegarantiEmailType : IEmailType
                         Role = "Avsender"
                     }
                 },
-                DocumentDate = DateTime.Now.ToString("O"),
+                DocumentDate = flowStatus.Message.ReceivedDateTime.HasValue
+                    ? flowStatus.Message.ReceivedDateTime.Value.ToString("O")
+                    : DateTime.Now.ToString("O"),
                 Files = new List<object>
                 {
                     new
@@ -221,7 +269,7 @@ public class LoyvegarantiEmailType : IEmailType
                 },
                 ResponsibleEnterpriseRecno = _responsibleEnterpriseRecno,
                 Status = "J",
-                Title = $"Løyvegaranti - {_result.OrganizationName} - {_result.OrganizationNumber}",
+                Title = $"{_result.Title} - {_result.OrganizationName} - {_result.OrganizationNumber}",
             };
             
             attachments.ForEach(a =>
@@ -243,6 +291,9 @@ public class LoyvegarantiEmailType : IEmailType
             flowStatus.Archive.DocumentNumber = document["DocumentNumber"]!.ToString();
         }
         
-        return await Task.FromResult($"Denne e-posten er håndtert av KI og gjort noe med på begrunnelse: {_result.Description}");
+        var caseHandle = flowStatus.Archive.CaseCreated
+            ? "Sak ble også automatisk opprettet siden robåten ikke fant en eksisterende sak."
+            : "Robåten fant en eksisterende sak og arkiverte dokumentet i denne.";
+        return await Task.FromResult($"{_result.Title} er automatisk arkivert med dokumentnummer {flowStatus.Archive.DocumentNumber}. {caseHandle}");
     }
 }
