@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using postmottak_arkivering_dotnet.Contracts.Ai.Enums;
 
 namespace postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
 
@@ -13,6 +14,5 @@ public class LoyvegarantiChatResult
     [Description("Er 9 siffer langt og kan inneholde mellomrom")]
     public required string OrganizationNumber { get; init; }
     
-    [Description("Settes som 'Løyvegaranti' eller som 'Endring av løyvegaranti' eller som 'Opphør av løyvegaranti' og kun en av disse tre verdiene")]
-    public required string Title { get; init; }
+    public required LøyveGarantiType Type { get; init; }
 }

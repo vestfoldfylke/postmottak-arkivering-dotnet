@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Graph.Models;
 using postmottak_arkivering_dotnet.Contracts;
 using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
+using postmottak_arkivering_dotnet.Contracts.Ai.Enums;
 using postmottak_arkivering_dotnet.Contracts.Email;
 using postmottak_arkivering_dotnet.Services;
 using postmottak_arkivering_dotnet.Services.Ai;
@@ -122,9 +123,7 @@ public class LoyvegarantiEmailType : IEmailType
         }
         
         var (_, result) = await _aiArntIvan.Ask<LoyvegarantiChatResult>($"{message.Subject!} - {message.Body!.Content!}");
-        if (result is null || string.IsNullOrEmpty(result.OrganizationName) ||
-            string.IsNullOrEmpty(result.OrganizationNumber) || string.IsNullOrEmpty(result.Title) ||
-            !_titles.Any(title => result.Title.Contains(title, StringComparison.OrdinalIgnoreCase)))
+        if (result is null || string.IsNullOrEmpty(result.OrganizationName) || string.IsNullOrEmpty(result.OrganizationNumber))
         {
             _metricsService.Count("Postmottak_Arkivering_EmailType_Maybe_Match", "EmailType hit a maybe match", ("EmailType", nameof(LoyvegarantiEmailType)));
             var resultString = JsonSerializer.Serialize(result);
@@ -226,6 +225,8 @@ public class LoyvegarantiEmailType : IEmailType
 
             flowStatus.Archive.CaseNumber = activeCase["CaseNumber"]!.ToString();
         }
+
+        var title = GetTitle();
         
         if (string.IsNullOrEmpty(flowStatus.Archive.DocumentNumber))
         {
@@ -269,7 +270,7 @@ public class LoyvegarantiEmailType : IEmailType
                 },
                 ResponsibleEnterpriseRecno = _responsibleEnterpriseRecno,
                 Status = "J",
-                Title = $"{_result.Title} - {_result.OrganizationName} - {_result.OrganizationNumber}",
+                Title = $"{title} - {_result.OrganizationName} - {_result.OrganizationNumber}",
             };
             
             attachments.ForEach(a =>
@@ -294,6 +295,22 @@ public class LoyvegarantiEmailType : IEmailType
         var caseHandle = flowStatus.Archive.CaseCreated
             ? "Sak ble også automatisk opprettet siden robåten ikke fant en eksisterende sak."
             : "Robåten fant en eksisterende sak og arkiverte dokumentet i denne.";
-        return await Task.FromResult($"{_result.Title} er automatisk arkivert med dokumentnummer {flowStatus.Archive.DocumentNumber}. {caseHandle}");
+        return await Task.FromResult($"{title} er automatisk arkivert med dokumentnummer {flowStatus.Archive.DocumentNumber}. {caseHandle}");
+    }
+
+    private string GetTitle()
+    {
+        if (_result is null)
+        {
+            return "";
+        }
+        
+        return _result.Type switch
+        {
+            LøyveGarantiType.Løyvegaranti => _titles[0],
+            LøyveGarantiType.EndringAvLøyvegaranti => _titles[1],
+            LøyveGarantiType.OpphørAvLøyvegaranti => _titles[2],
+            _ => throw new ArgumentOutOfRangeException(nameof(_result.Type), _result.Type, null)
+        };
     }
 }
