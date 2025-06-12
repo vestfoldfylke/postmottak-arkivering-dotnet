@@ -218,24 +218,32 @@ public class Archive
                 continue;
             }
             
-            var (emailType, unknownMessage) = await _emailTypeService.GetEmailType(message);
-            if (unknownMessage is not null)
+            try
             {
-                unknownMessages.Add(unknownMessage);
-                continue;
-            }
-            
-            if (emailType is null)
-            {
-                throw new InvalidOperationException(
-                    $"No email type found for message with Id {message.Id}. This should never happen, please check your email types.");
-            }
+                var (emailType, unknownMessage) = await _emailTypeService.GetEmailType(message);
+                if (unknownMessage is not null)
+                {
+                    unknownMessages.Add(unknownMessage);
+                    continue;
+                }
 
-            messagesToHandle.Add((emailType, new FlowStatus
+                if (emailType is null)
+                {
+                    throw new InvalidOperationException(
+                        $"No email type found for message with Id {message.Id}. This should never happen, please check your email types.");
+                }
+
+                messagesToHandle.Add((emailType, new FlowStatus
+                {
+                    Type = emailType.GetType().Name,
+                    Message = message
+                }));
+            }
+            catch (Exception ex)
             {
-                Type = emailType.GetType().Name,
-                Message = message
-            }));
+                // TODO: Should we handle this somehow? If not this will nag indefinitely...
+                _logger.LogError(ex, "Failed to determine email type for MessageId {MessageId}", message.Id);
+            }
         }
         
         await HandleUnknownMessages(unknownMessages);
