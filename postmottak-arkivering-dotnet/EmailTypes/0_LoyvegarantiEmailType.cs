@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph.Models;
 using postmottak_arkivering_dotnet.Contracts;
 using postmottak_arkivering_dotnet.Contracts.Ai.ChatResult;
@@ -23,6 +24,7 @@ public class LoyvegarantiEmailType : IEmailType
     private readonly IAiArntIvanService _aiArntIvan;
     private readonly IArchiveService _archiveService;
     private readonly IGraphService _graphService;
+    private readonly ILogger<LoyvegarantiEmailType> _logger;
     private readonly IMetricsService _metricsService;
     
     private const string FromAddress = "post@matrixinsurance.no";
@@ -44,12 +46,6 @@ public class LoyvegarantiEmailType : IEmailType
         "Forward:",
         "Videresend:"
     ];
-    
-    private readonly string[] _titles = [
-        "Løyvegaranti",
-        "Endring av løyvegaranti",
-        "Opphør av løyvegaranti"
-    ];
 
     private const string MatrixInsuranceReferenceNumber = "966431695";
 
@@ -69,6 +65,7 @@ public class LoyvegarantiEmailType : IEmailType
         _aiArntIvan = serviceProvider.GetService<IAiArntIvanService>()!;
         _archiveService = serviceProvider.GetRequiredService<IArchiveService>();
         _graphService = serviceProvider.GetRequiredService<IGraphService>();
+        _logger = serviceProvider.GetRequiredService<ILogger<LoyvegarantiEmailType>>();
         _metricsService = serviceProvider.GetRequiredService<IMetricsService>();
         
         IConfiguration configuration = serviceProvider.GetRequiredService<IConfiguration>();
@@ -180,10 +177,12 @@ public class LoyvegarantiEmailType : IEmailType
                 if (updatedCase is null)
                 {
                     _metricsService.Count("Postmottak_Arkivering_UpdateCase", "Update case called", ("Result", "Failed"));
+                    _logger.LogError("Failed to update case status to 'Under behandling' (B) for CaseNumber {CaseNumber}", activeCase["CaseNumber"]);
                     throw new InvalidOperationException("Failed to update case status to 'B'");
                 }
                 
                 _metricsService.Count("Postmottak_Arkivering_UpdateCase", "Update case called", ("Result", "Success"));
+                _logger.LogInformation("Updated case status to 'Under behandling' (B) for CaseNumber {CaseNumber}", activeCase["CaseNumber"]);
             }
             
             if (activeCase is null)
@@ -221,6 +220,8 @@ public class LoyvegarantiEmailType : IEmailType
                 flowStatus.Archive.CaseCreated = true;
                 
                 _metricsService.Count("Postmottak_Arkivering_CreateCase", "Archive case created");
+                _logger.LogInformation("Created new case with CaseNumber {CaseNumber} and Title {Title}",
+                    activeCase["CaseNumber"], activeCase["Title"]);
             }
 
             flowStatus.Archive.CaseNumber = activeCase["CaseNumber"]!.ToString();
@@ -287,9 +288,11 @@ public class LoyvegarantiEmailType : IEmailType
             });
             
             var document = await _archiveService.CreateDocument(payload);
-            _metricsService.Count("Postmottak_Arkivering_CreateDocument", "Archive document created", ("EmailType", nameof(LoyvegarantiEmailType)));
-
             flowStatus.Archive.DocumentNumber = document["DocumentNumber"]!.ToString();
+            
+            _metricsService.Count("Postmottak_Arkivering_CreateDocument", "Archive document created", ("EmailType", nameof(LoyvegarantiEmailType)));
+            _logger.LogInformation("Created document with DocumentNumber {DocumentNumber} for CaseNumber {CaseNumber}",
+                flowStatus.Archive.DocumentNumber, flowStatus.Archive.CaseNumber);
         }
         
         var caseHandle = flowStatus.Archive.CaseCreated
@@ -302,14 +305,14 @@ public class LoyvegarantiEmailType : IEmailType
     {
         if (_result is null)
         {
-            return "";
+            throw new InvalidOperationException("LøyvegarantiType not found. Cannot determine title.");
         }
         
         return _result.Type switch
         {
-            LøyveGarantiType.Løyvegaranti => _titles[0],
-            LøyveGarantiType.EndringAvLøyvegaranti => _titles[1],
-            LøyveGarantiType.OpphørAvLøyvegaranti => _titles[2],
+            LøyveGarantiType.Løyvegaranti => "Løyvegaranti",
+            LøyveGarantiType.EndringAvLøyvegaranti => "Endring av løyvegaranti",
+            LøyveGarantiType.OpphørAvLøyvegaranti => "Opphør av løyvegaranti",
             _ => throw new ArgumentOutOfRangeException(nameof(_result.Type), _result.Type, null)
         };
     }
