@@ -46,6 +46,8 @@ public class PengetransportenEmailType : IEmailType
         "Transaksjonsoppføring",
         "Fakturanummer",
         "Refusjonskrav",
+        "Rentenota",
+        "Betalingspåminning",
         "Bill",
         "Invoice",
         "Credit Note",
