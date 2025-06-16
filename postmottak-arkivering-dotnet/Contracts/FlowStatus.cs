@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json.Nodes;
+using JetBrains.Annotations;
 using Microsoft.Graph.Models;
 
 namespace postmottak_arkivering_dotnet.Contracts;
@@ -10,8 +11,8 @@ public class FlowStatus
     public int RunCount { get; set; }
 
     public ArchiveStatus Archive { get; set; } = new();
-    public string? ErrorMessage { get; set; }
-    public string? ErrorStack { get; set; }
+    public string? ErrorMessage { [UsedImplicitly] get; set; }
+    public string? ErrorStack { [UsedImplicitly] get; set; }
     public required Message Message { get; init; }
     public object? Result { get; set; }
     public bool SendToArkivarerForHandling { get; set; }
