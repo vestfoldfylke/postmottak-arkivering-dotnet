@@ -64,12 +64,12 @@ public class EmailTypeTests
         var (emailTypeBody, unknownMessageBody) = await _emailTypeService.GetEmailType(messageWithoutBody);
         
         Assert.Null(emailTypeBody);
-        Assert.Null(unknownMessageBody);
+        Assert.NotNull(unknownMessageBody);
         
         var (emailTypeSubject, unknownMessageSubject) = await _emailTypeService.GetEmailType(messageWithoutSubject);
         
         Assert.Null(emailTypeSubject);
-        Assert.Null(unknownMessageSubject);
+        Assert.NotNull(unknownMessageSubject);
         
         Assert.Empty(_aiArntIvanService.ReceivedCalls());
         Assert.Empty(_aiPluginTestService.ReceivedCalls());
