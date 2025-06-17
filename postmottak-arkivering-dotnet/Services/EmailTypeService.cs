@@ -44,7 +44,13 @@ public class EmailTypeService : IEmailTypeService
     {
         if (string.IsNullOrEmpty(message.Body?.Content) || string.IsNullOrEmpty(message.Subject))
         {
-            return (null, null);
+            _logger.LogInformation("Cant determine email type, since body and/or subject is empty, for MessageId {MessageId}.", message.Id);
+            return (null, new UnknownMessage
+            {
+                Message = message,
+                Result = HelperTools.GenerateHtmlBox("E-posten mangler innhold og/eller emne er tomt"),
+                PartialMatch = false
+            });
         }
 
         var partialText = "";

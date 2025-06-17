@@ -241,8 +241,7 @@ public class Archive
             }
             catch (Exception ex)
             {
-                // TODO: Should we handle this somehow? If not this will nag indefinitely...
-                _logger.LogError(ex, "Failed to determine email type for MessageId {MessageId}", message.Id);
+                _logger.LogError(ex, "Failed to determine email type for MessageId {MessageId}.", message.Id);
             }
         }
         
