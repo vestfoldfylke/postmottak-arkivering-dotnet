@@ -122,7 +122,7 @@ public class LoyvegarantiEmailType : IEmailType
         var (_, result) = await _aiArntIvan.Ask<LoyvegarantiChatResult>($"{message.Subject!} - {message.Body!.Content!}");
         if (result is null || string.IsNullOrEmpty(result.OrganizationName) || string.IsNullOrEmpty(result.OrganizationNumber))
         {
-            _metricsService.Count("Postmottak_Arkivering_EmailType_Maybe_Match", "EmailType hit a maybe match", ("EmailType", nameof(LoyvegarantiEmailType)));
+            _metricsService.Count($"{Constants.MetricsPrefix}_EmailType_Maybe_Match", "EmailType hit a maybe match", ("EmailType", nameof(LoyvegarantiEmailType)));
             var resultString = JsonSerializer.Serialize(result);
             return new EmailTypeMatchResult
             {
@@ -133,7 +133,7 @@ public class LoyvegarantiEmailType : IEmailType
 
         _result = result;
         
-        _metricsService.Count("Postmottak_Arkivering_EmailType_Match", "EmailType hit a match", ("EmailType", nameof(LoyvegarantiEmailType)));
+        _metricsService.Count($"{Constants.MetricsPrefix}_EmailType_Match", "EmailType hit a match", ("EmailType", nameof(LoyvegarantiEmailType)));
         return new EmailTypeMatchResult
         {
             Matched = EmailTypeMatched.Yes
@@ -176,12 +176,12 @@ public class LoyvegarantiEmailType : IEmailType
                 
                 if (updatedCase is null)
                 {
-                    _metricsService.Count("Postmottak_Arkivering_UpdateCase", "Update case called", ("Result", "Failed"));
+                    _metricsService.Count($"{Constants.MetricsPrefix}_UpdateCase", "Update case called", ("Result", "Failed"));
                     _logger.LogError("Failed to update case status to 'Under behandling' (B) for CaseNumber {CaseNumber}", activeCase["CaseNumber"]);
                     throw new InvalidOperationException("Failed to update case status to 'B'");
                 }
                 
-                _metricsService.Count("Postmottak_Arkivering_UpdateCase", "Update case called", ("Result", "Success"));
+                _metricsService.Count($"{Constants.MetricsPrefix}_UpdateCase", "Update case called", ("Result", "Success"));
                 _logger.LogInformation("Updated case status to 'Under behandling' (B) for CaseNumber {CaseNumber}", activeCase["CaseNumber"]);
             }
             
@@ -219,7 +219,7 @@ public class LoyvegarantiEmailType : IEmailType
                 
                 flowStatus.Archive.CaseCreated = true;
                 
-                _metricsService.Count("Postmottak_Arkivering_CreateCase", "Archive case created");
+                _metricsService.Count($"{Constants.MetricsPrefix}_CreateCase", "Archive case created");
                 _logger.LogInformation("Created new case with CaseNumber {CaseNumber} and Title {Title}",
                     activeCase["CaseNumber"], activeCase["Title"]);
             }
@@ -290,7 +290,7 @@ public class LoyvegarantiEmailType : IEmailType
             var document = await _archiveService.CreateDocument(payload);
             flowStatus.Archive.DocumentNumber = document["DocumentNumber"]!.ToString();
             
-            _metricsService.Count("Postmottak_Arkivering_CreateDocument", "Archive document created", ("EmailType", nameof(LoyvegarantiEmailType)));
+            _metricsService.Count($"{Constants.MetricsPrefix}_CreateDocument", "Archive document created", ("EmailType", nameof(LoyvegarantiEmailType)));
             _logger.LogInformation("Created document with DocumentNumber {DocumentNumber} for CaseNumber {CaseNumber}",
                 flowStatus.Archive.DocumentNumber, flowStatus.Archive.CaseNumber);
         }

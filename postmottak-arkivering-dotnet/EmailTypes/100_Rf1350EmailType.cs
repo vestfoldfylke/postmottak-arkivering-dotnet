@@ -106,7 +106,7 @@ public partial class Rf1350EmailType : IEmailType
         var (_, result) = await _aiArntIvanService.Ask<Rf1350ChatResult>(message.Body!.Content!);
         if (string.IsNullOrEmpty(result?.Type) || string.IsNullOrEmpty(result.ReferenceNumber))
         {
-            _metricsService.Count("Postmottak_Arkivering_EmailType_Maybe_Match", "EmailType hit a maybe match", ("EmailType", nameof(Rf1350EmailType)));
+            _metricsService.Count($"{Constants.MetricsPrefix}_EmailType_Maybe_Match", "EmailType hit a maybe match", ("EmailType", nameof(Rf1350EmailType)));
             var resultString = JsonSerializer.Serialize(result);
             return new EmailTypeMatchResult
             {
@@ -123,7 +123,7 @@ public partial class Rf1350EmailType : IEmailType
             _result.ProjectNumber = _testProjectNumber;
         }
         
-        _metricsService.Count("Postmottak_Arkivering_EmailType_Match", "EmailType hit a maybe match", ("EmailType", nameof(Rf1350EmailType)));
+        _metricsService.Count($"{Constants.MetricsPrefix}_EmailType_Match", "EmailType hit a maybe match", ("EmailType", nameof(Rf1350EmailType)));
         return new EmailTypeMatchResult
         {
             Matched = EmailTypeMatched.Yes
@@ -481,7 +481,7 @@ public partial class Rf1350EmailType : IEmailType
 
         flowStatus.Archive.CaseCreated = true;
         
-        _metricsService.Count("Postmottak_Arkivering_CreateCase", "Archive case created", ("EmailType", nameof(Rf1350EmailType)));
+        _metricsService.Count($"{Constants.MetricsPrefix}_CreateCase", "Archive case created", ("EmailType", nameof(Rf1350EmailType)));
         
         return activeCase;
     }
@@ -546,7 +546,7 @@ public partial class Rf1350EmailType : IEmailType
         
         var document = await _archiveService.CreateDocument(payload);
         
-        _metricsService.Count("Postmottak_Arkivering_CreateDocument", "Archive document created", ("EmailType", nameof(Rf1350EmailType)));
+        _metricsService.Count($"{Constants.MetricsPrefix}_CreateDocument", "Archive document created", ("EmailType", nameof(Rf1350EmailType)));
 
         flowStatus.Archive.DocumentNumber = document["DocumentNumber"]!.ToString();
     }

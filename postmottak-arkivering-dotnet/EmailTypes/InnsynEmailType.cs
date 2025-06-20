@@ -68,7 +68,7 @@ public class InnsynEmailType : IEmailType
         if (result is null || !result.IsInnsyn)
         {
             var resultString = JsonSerializer.Serialize(result);
-            _metricsService.Count("Postmottak_Arkivering_EmailType_Maybe_Match", "EmailType hit a maybe match", ("EmailType", nameof(InnsynEmailType)));
+            _metricsService.Count($"{Constants.MetricsPrefix}_EmailType_Maybe_Match", "EmailType hit a maybe match", ("EmailType", nameof(InnsynEmailType)));
             return new EmailTypeMatchResult
             {
                 Matched = EmailTypeMatched.Maybe,
@@ -78,7 +78,7 @@ public class InnsynEmailType : IEmailType
 
         _result = result;
         
-        _metricsService.Count("Postmottak_Arkivering_EmailType_Match", "EmailType hit a maybe match", ("EmailType", nameof(InnsynEmailType)));
+        _metricsService.Count($"{Constants.MetricsPrefix}_EmailType_Match", "EmailType hit a maybe match", ("EmailType", nameof(InnsynEmailType)));
         return new EmailTypeMatchResult
         {
             Matched = EmailTypeMatched.Yes
@@ -106,7 +106,7 @@ public class InnsynEmailType : IEmailType
         
         await _graphService.ForwardMailMessage(_postmottakUpn, flowStatus.Message.Id!, _toRecipients, HelperTools.GenerateHtmlBox(forwardMessage));
         
-        _metricsService.Count("Postmottak_Arkivering_Email_Forwarded", "Email forwarded", ("EmailType", nameof(InnsynEmailType)));
+        _metricsService.Count($"{Constants.MetricsPrefix}_Email_Forwarded", "Email forwarded", ("EmailType", nameof(InnsynEmailType)));
         
         return $"Denne e-posten er håndtert av KI på begrunnelse: {_result.Description}, og videresendt til <ul>{string.Join("", _toRecipients.Select(recipient => $"<li>{recipient}</li>"))}</ul>";
     }

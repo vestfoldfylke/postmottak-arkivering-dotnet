@@ -66,14 +66,14 @@ public class EmailTypeService : IEmailTypeService
             if (matchResult.Matched == EmailTypeMatched.Yes)
             {
                 _logger.LogInformation("Matched {EmailType} for MessageId {MessageId}", emailType.Name, message.Id);
-                _metricsService.Count("Postmottak_Arkivering_GetEmailType", "Determine which email type to use", ("EmailType", emailType.Name), ("Result", "Yes"));
+                _metricsService.Count($"{Constants.MetricsPrefix}_GetEmailType", "Determine which email type to use", ("EmailType", emailType.Name), ("Result", "Yes"));
                 return (emailTypeInstance, null);
             }
             
             if (matchResult.Matched == EmailTypeMatched.Maybe)
             {
                 _logger.LogDebug("Partially matched {EmailType} for MessageId {MessageId}", emailType.Name, message.Id);
-                _metricsService.Count("Postmottak_Arkivering_GetEmailType", "Determine which email type to use", ("EmailType", emailType.Name), ("Result", "Maybe"));
+                _metricsService.Count($"{Constants.MetricsPrefix}_GetEmailType", "Determine which email type to use", ("EmailType", emailType.Name), ("Result", "Maybe"));
                 if (matchResult.Result != null)
                 {
                     partialText += $"<b>{emailType.Name}</b>: {matchResult.Result}<br /><br />";

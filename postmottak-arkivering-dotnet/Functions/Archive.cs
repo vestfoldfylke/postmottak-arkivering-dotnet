@@ -202,7 +202,7 @@ public class Archive
                 if (flowStatus.SendToArkivarerForHandling)
                 {
                     // TODO: Remove with time
-                    _metricsService.Count("Postmottak_Arkivering_SendToArkivarerForHandling", "Send to arkivarer for handling", ("EmailType", flowStatus.Type));
+                    _metricsService.Count($"{Constants.MetricsPrefix}_SendToArkivarerForHandling", "Send to arkivarer for handling", ("EmailType", flowStatus.Type));
                     _logger.LogError("Hit kommer vi absolutt aldri! MessageId {MessageId} is unhandelable. Send to arkivarer for handling", message.Id);
                     continue;
                 }
@@ -277,7 +277,7 @@ public class Archive
                 {
                     _logger.LogInformation("Starting {EmailType}.HandleMessage for MessageId {MessageId}");
                     var handledMessage = await emailType.HandleMessage(flowStatus);
-                    _metricsService.Count("Postmottak_Arkivering_EmailType_Handled", "EmailType handled", ("EmailType", flowStatus.Type), ("Result", "Success"));
+                    _metricsService.Count($"{Constants.MetricsPrefix}_EmailType_Handled", "EmailType handled", ("EmailType", flowStatus.Type), ("Result", "Success"));
                     
                     var funFact = emailType.IncludeFunFact ? await _aiArntIvanService.FunFact() : string.Empty;
                     var funFactMessage = emailType.IncludeFunFact && !string.IsNullOrEmpty(funFact)
@@ -315,7 +315,7 @@ public class Archive
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error handling MessageId {MessageId} with {EmailType}");
-                    _metricsService.Count("Postmottak_Arkivering_EmailType_Handled", "EmailType handled", ("EmailType", flowStatus.Type), ("Result", "Failed"));
+                    _metricsService.Count($"{Constants.MetricsPrefix}_EmailType_Handled", "EmailType handled", ("EmailType", flowStatus.Type), ("Result", "Failed"));
                     
                     flowStatus.ErrorMessage = ex.Message;
                     flowStatus.ErrorStack = ex.StackTrace;
@@ -325,7 +325,7 @@ public class Archive
                     {
                         _logger.LogWarning(
                             "MessageId {MessageId} is unhandelable. Message will be moved to manual handling folder and arkivarer must do something!");
-                        _metricsService.Count("Postmottak_Arkivering_EmailType_Unhandelable", "EmailType unhandelable", ("EmailType", flowStatus.Type));
+                        _metricsService.Count($"{Constants.MetricsPrefix}_EmailType_Unhandelable", "EmailType unhandelable", ("EmailType", flowStatus.Type));
                         
                         await _graphService.MoveMailMessage(_postboxUpn, flowStatus.Message.Id!,
                             _mailFolderManualHandlingId);
@@ -358,7 +358,7 @@ public class Archive
             unknownMessage.Message.Body!.Content = $"{unknownMessage.Result}{unknownMessage.Message.Body!.Content}";
             unknownMessage.Message.Body!.ContentType = BodyType.Html;
             
-            _metricsService.Count("Postmottak_Arkivering_EmailType_Unknown", "EmailType unknown", ("PartialMatch", unknownMessage.PartialMatch ? "Yes" : "No"));
+            _metricsService.Count($"{Constants.MetricsPrefix}_EmailType_Unknown", "EmailType unknown", ("PartialMatch", unknownMessage.PartialMatch ? "Yes" : "No"));
 
             var newMessage =
                 await _graphService.CreateMailMessage(_postboxLogUpn, destinationId, unknownMessage.Message);
@@ -391,12 +391,12 @@ public class Archive
                     WriteIndented = true
                 }));
             
-            _metricsService.Count("Postmottak_Arkivering_FlowStatusBlob_Upserted", "FlowStatus blob upserted", ("EmailType", flowStatus.Type), ("Result", "Success"));
+            _metricsService.Count($"{Constants.MetricsPrefix}_FlowStatusBlob_Upserted", "FlowStatus blob upserted", ("EmailType", flowStatus.Type), ("Result", "Success"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to serialize flowStatus or upload blob for MessageId {MessageId}. Things might happen multiple times", messageId);
-            _metricsService.Count("Postmottak_Arkivering_FlowStatusBlob_Upserted", "FlowStatus blob upserted", ("EmailType", flowStatus.Type), ("Result", "Failed"));
+            _metricsService.Count($"{Constants.MetricsPrefix}_FlowStatusBlob_Upserted", "FlowStatus blob upserted", ("EmailType", flowStatus.Type), ("Result", "Failed"));
         }
     }
     
@@ -411,13 +411,13 @@ public class Archive
             
             if (blobCount > 0)
             {
-                _metricsService.Count("Postmottak_Arkivering_FlowStatusBlob_Removed", "FlowStatus blob removed", blobCount, ("EmailType", flowType), ("Result", "Success"));
+                _metricsService.Count($"{Constants.MetricsPrefix}_FlowStatusBlob_Removed", "FlowStatus blob removed", blobCount, ("EmailType", flowType), ("Result", "Success"));
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to remove blob with BlobPath {BlobPath}. Blob might be hold on (be strong) to longer than needed. Check blob storage container retention", blobPath);
-            _metricsService.Count("Postmottak_Arkivering_FlowStatusBlob_Removed", "FlowStatus blob removed", ("EmailType", flowType), ("Result", "Failed"));
+            _metricsService.Count($"{Constants.MetricsPrefix}_FlowStatusBlob_Removed", "FlowStatus blob removed", ("EmailType", flowType), ("Result", "Failed"));
         }
     }
 }

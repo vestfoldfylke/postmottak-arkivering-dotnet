@@ -38,7 +38,7 @@ public class AiArntIvanService : IAiArntIvanService
     
     public async Task<(ChatHistory, T?)> Ask<T>(string prompt, ChatHistory? chatHistory = null)
     {
-        _metricsService.Count("Postmottak_Arkivering_ArntIvan_Ask", "ArntIvan Ask called", ("EmailType", typeof(T).Name));
+        _metricsService.Count($"{Constants.MetricsPrefix}_ArntIvan_Ask", "ArntIvan Ask called", ("EmailType", typeof(T).Name));
         
         ChatCompletionAgent agent = GetOrCreateAgent<T>();
         
@@ -49,7 +49,7 @@ public class AiArntIvanService : IAiArntIvanService
 
     public async Task<string> FunFact()
     {
-        _metricsService.Count("Postmottak_Arkivering_ArntIvan_FunFact", "ArntIvan FunFact called");
+        _metricsService.Count($"{Constants.MetricsPrefix}_ArntIvan_FunFact", "ArntIvan FunFact called");
         
         ChatCompletionAgent agent = GetOrCreateAgent<FunFactChatResult>();
         

@@ -117,7 +117,7 @@ public class PengetransportenEmailType : IEmailType
         if (result is null || !result.IsInvoiceRelated)
         {
             var resultString = JsonSerializer.Serialize(result);
-            _metricsService.Count("Postmottak_Arkivering_EmailType_Maybe_Match", "EmailType hit a maybe match", ("EmailType", nameof(PengetransportenEmailType)));
+            _metricsService.Count($"{Constants.MetricsPrefix}_EmailType_Maybe_Match", "EmailType hit a maybe match", ("EmailType", nameof(PengetransportenEmailType)));
             return new EmailTypeMatchResult
             {
                 Matched = EmailTypeMatched.Maybe,
@@ -127,7 +127,7 @@ public class PengetransportenEmailType : IEmailType
 
         _result = result;
         
-        _metricsService.Count("Postmottak_Arkivering_EmailType_Match", "EmailType hit a maybe match", ("EmailType", nameof(PengetransportenEmailType)));
+        _metricsService.Count($"{Constants.MetricsPrefix}_EmailType_Match", "EmailType hit a maybe match", ("EmailType", nameof(PengetransportenEmailType)));
         return new EmailTypeMatchResult
         {
             Matched = EmailTypeMatched.Yes
@@ -155,7 +155,7 @@ public class PengetransportenEmailType : IEmailType
         
         await _graphService.ForwardMailMessage(_postmottakUpn, flowStatus.Message.Id!, _toRecipients, HelperTools.GenerateHtmlBox(forwardMessage));
         
-        _metricsService.Count("Postmottak_Arkivering_Email_Forwarded", "Email forwarded", ("EmailType", nameof(PengetransportenEmailType)));
+        _metricsService.Count($"{Constants.MetricsPrefix}_Email_Forwarded", "Email forwarded", ("EmailType", nameof(PengetransportenEmailType)));
         
         return $"Denne e-posten er håndtert av KI på begrunnelse: {_result.Description}, og videresendt til <ul>{string.Join("", _toRecipients.Select(recipient => $"<li>{recipient}</li>"))}</ul>";
     }
