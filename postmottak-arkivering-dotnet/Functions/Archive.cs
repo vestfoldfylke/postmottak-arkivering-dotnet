@@ -103,10 +103,19 @@ public class Archive
         if (_hostEnvironment.IsDevelopment())
         {
             _logger.LogInformation("Development environment detected, skipping GetAndHandleEmailsTimer email handling.");
+            
+            await Task.WhenAll(
+                BlobStorageFailedCount(),
+                BlobStorageQueueCount()
+            );
+
             return;
         }
         
-        await GetAndHandleEmails();
+        await Task.WhenAll(
+            BlobStorageFailedCount(),
+            GetAndHandleEmails()
+        );
     }
     
     [Function("ListFolders")]
@@ -172,16 +181,34 @@ public class Archive
         }
     }
 
+    private async Task BlobStorageFailedCount()
+    {
+        var failedBlobs = await _blobService.ListBlobs(_blobStorageFailedName);
+        _metricsService.Gauge($"{Constants.MetricsPrefix}_BlobStorageCount", "Current count of blobs in storage", failedBlobs.Count, ("BlobStorage", _blobStorageFailedName));
+        _logger.LogDebug("BlobStorage {BlobStorageFailedName} has {Count} blobs", _blobStorageFailedName, failedBlobs.Count);
+    }
+    
+    private async Task<List<BlobItem>> BlobStorageQueueCount()
+    {
+        var mailBlobs = await _blobService.ListBlobs(_blobStorageQueueName);
+        _metricsService.Gauge($"{Constants.MetricsPrefix}_BlobStorageCount", "Current count of blobs in storage", mailBlobs.Count, ("BlobStorage", _blobStorageQueueName));
+        _logger.LogDebug("BlobStorage {BlobStorageQueueName} has {Count} blobs", _blobStorageQueueName, mailBlobs.Count);
+        
+        return mailBlobs;
+    }
+    
     private async Task<ArchiveOkResponse> GetAndHandleEmails()
     {
+        _metricsService.Count($"{Constants.MetricsPrefix}_GetAndHandleEmails", "Count of get and handle emails started");
+        
+        var mailBlobs = await BlobStorageQueueCount();
+
         var mailMessages = await _graphService.GetMailMessages(_postboxUpn, _mailFolderInboxId);
         if (mailMessages.Count == 0)
         {
             _logger.LogInformation("No messages found in Inbox folder");
             return new ArchiveOkResponse();
         }
-
-        var mailBlobs = await _blobService.ListBlobs(_blobStorageQueueName);
 
         List<(IEmailType, FlowStatus)> messagesToHandle = [];
         List<UnknownMessage> unknownMessages = [];
@@ -196,6 +223,7 @@ public class Archive
                 if (flowStatus is null)
                 {
                      _logger.LogError("Failed to download blob content for BlobName {BlobName}. Blob might be hold on (be strong) to longer than needed. Check blob storage container retention", blobItem.Name);
+                     _metricsService.Count($"{Constants.MetricsPrefix}_FlowStatusBlobDownloadFailed", "FlowStatus blob download failed");
                      continue;
                 }
 
