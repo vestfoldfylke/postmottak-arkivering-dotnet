@@ -40,14 +40,16 @@ public class Archive
     private readonly IMetricsService _metricsService;
     private readonly IStatisticsService _statisticsService;
     private readonly IHostEnvironment _hostEnvironment;
+    private readonly IMongoDbServices _mongoDbServices;
     
     private readonly string _blobStorageFailedName;
     private readonly string _blobStorageQueueName;
     private readonly string _mailFolderInboxId;
     private readonly string _mailFolderManualHandlingId;
+    private readonly string _mailFolderFinishedId;
+    private readonly string _mailFolderUnwantedRuleId;
     private readonly string _mailFolderMaybeId;
     private readonly string _mailFolderNoMatchId;
-    private readonly string _mailFolderFinishedId;
     private readonly string _postboxUpn;
     private readonly string _postboxLogUpn;
     private readonly int[] _retryMinutesIntervals;
@@ -61,7 +63,8 @@ public class Archive
         ILogger<Archive> logger,
         IMetricsService metricsService,
         IStatisticsService statisticsService,
-        IHostEnvironment hostEnvironment)
+        IHostEnvironment hostEnvironment,
+        IMongoDbServices mongoDbServices)
     {
         _aiArntIvanService = aiArntIvanService;
         _aiPluginTestService = aiPluginTestService;
@@ -72,6 +75,7 @@ public class Archive
         _statisticsService = statisticsService;
         _metricsService = metricsService;
         _hostEnvironment = hostEnvironment;
+        _mongoDbServices = mongoDbServices;
 
         _blobStorageFailedName = configuration["BLOB_STORAGE_FAILED_NAME"] ?? "failed";
         _blobStorageQueueName = configuration["BLOB_STORAGE_QUEUE_NAME"] ?? "queue";
@@ -79,9 +83,10 @@ public class Archive
         
         _mailFolderInboxId = configuration["POSTMOTTAK_MAIL_FOLDER_INBOX_ID"] ?? throw new NullReferenceException();
         _mailFolderManualHandlingId = configuration["POSTMOTTAK_MAIL_FOLDER_MANUALHANDLING_ID"] ?? throw new NullReferenceException();
+        _mailFolderFinishedId = configuration["POSTMOTTAK_MAIL_FOLDER_FINISHED_ID"] ?? throw new NullReferenceException();
+        _mailFolderUnwantedRuleId = configuration["POSTMOTTAK_MAIL_FOLDER_UNWANTED_RULE_ID"] ?? throw new NullReferenceException();
         _mailFolderMaybeId = configuration["POSTMOTTAK_MAIL_FOLDER_ROBOT_LOG_MAYBE_ID"] ?? throw new NullReferenceException();
         _mailFolderNoMatchId = configuration["POSTMOTTAK_MAIL_FOLDER_ROBOT_LOG_NOMATCH_ID"] ?? throw new NullReferenceException();
-        _mailFolderFinishedId = configuration["POSTMOTTAK_MAIL_FOLDER_FINISHED_ID"] ?? throw new NullReferenceException();
         _postboxUpn = configuration["POSTMOTTAK_UPN"] ?? throw new NullReferenceException();
         _postboxLogUpn = configuration["POSTMOTTAK_LOG_UPN"] ?? throw new NullReferenceException();
     }
@@ -105,6 +110,7 @@ public class Archive
             _logger.LogInformation("Development environment detected, skipping GetAndHandleEmailsTimer email handling.");
             
             await Task.WhenAll(
+                MovedByRulesCount(),
                 BlobStorageFailedCount(),
                 BlobStorageQueueCount()
             );
@@ -113,6 +119,7 @@ public class Archive
         }
         
         await Task.WhenAll(
+            MovedByRulesCount(),
             BlobStorageFailedCount(),
             GetAndHandleEmails()
         );
@@ -195,6 +202,45 @@ public class Archive
         _logger.LogDebug("BlobStorage {BlobStorageQueueName} has {Count} blobs", _blobStorageQueueName, mailBlobs.Count);
         
         return mailBlobs;
+    }
+
+    private async Task MovedByRulesCount()
+    {
+        // count unwanted emails moved by rule
+        const string unwantedLastRegisteredDateTime = "unwantedLastRegisteredDateTime";
+        var lastRegisteredReceivedDateTime =
+            await _mongoDbServices.GetLastRegisteredDateTime(unwantedLastRegisteredDateTime);
+        var unwantedMailMessages =
+            await GetFolderEmails(_postboxUpn, _mailFolderUnwantedRuleId, lastRegisteredReceivedDateTime);
+        if (unwantedMailMessages.Count > 0)
+        {
+            lastRegisteredReceivedDateTime = unwantedMailMessages.Max(message => message.ReceivedDateTime ?? lastRegisteredReceivedDateTime);
+            _metricsService.Count($"{Constants.MetricsPrefix}_UnwantedMailMessageCount",
+                "Count of unwanted mail messages moved by rule", unwantedMailMessages.Count);
+            
+            await _mongoDbServices.UpdateLastRegisteredDateTime(unwantedLastRegisteredDateTime, lastRegisteredReceivedDateTime);
+            await _statisticsService.InsertRuleStatistics("Unwanted mail messages moved by rule", "UnwantedMailMessagesRule",
+                unwantedMailMessages.Count);
+        }
+    }
+    
+    private async Task<List<Message>> GetFolderEmails(string userPrincipalName, string folderId, DateTimeOffset lastRegisteredReceivedDateTime)
+    {
+        /*
+         * NOTE: Exchange Server stores receivedDateTime with milliseconds precision
+         * and MS Graph does not return milliseconds in the returned dateTime properties, so we must filter it ourselves.
+         */
+        var mailMessages = await _graphService.GetMailMessages(userPrincipalName, folderId,
+            filter: $"receivedDateTime gt {HelperTools.GetUtcDateTimeString(lastRegisteredReceivedDateTime)}", orderBy: "receivedDateTime desc", top: 500);
+
+        var filteredMailMessages = mailMessages
+            .Where(message => message.ReceivedDateTime.HasValue &&
+                              message.ReceivedDateTime.Value > lastRegisteredReceivedDateTime)
+            .ToList();
+        
+        _logger.LogInformation("Filtered folder mail messages to {Count} messages", filteredMailMessages.Count);
+
+        return filteredMailMessages;
     }
     
     private async Task<ArchiveOkResponse> GetAndHandleEmails()
@@ -335,7 +381,7 @@ public class Archive
 
                     await RemoveFlowStatusBlob(flowStatus.Type, flowStatus.Message.Id!);
                     
-                    await _statisticsService.InsertStatistics(handledMessage, flowStatus.Message.Id!, flowStatus.Type, flowStatus.Message.From?.EmailAddress?.Address);
+                    await _statisticsService.InsertSystemStatistics(handledMessage, flowStatus.Type, flowStatus.Message.Id!, flowStatus.Message.From?.EmailAddress?.Address);
                     
                     _logger.LogInformation("Finished {EmailType}.HandleMessage for MessageId {MessageId} with result {HandledMessage}",
                         flowStatus.Type, flowStatus.Message.Id, handledMessage);
@@ -401,7 +447,7 @@ public class Archive
             
             _logger.LogInformation("MessageId {MessageId} is of an unknown type and will be moved to manual handling folder", unknownMessage.Message.Id);
             
-            await _statisticsService.InsertStatistics("Email with unknown type", unknownMessage.Message.Id!, "Unknown", unknownMessage.Message.From?.EmailAddress?.Address);
+            await _statisticsService.InsertSystemStatistics("Email with unknown type", "Unknown", unknownMessage.Message.Id!, unknownMessage.Message.From?.EmailAddress?.Address);
             
             await _graphService.MoveMailMessage(_postboxUpn, unknownMessage.Message.Id!, _mailFolderManualHandlingId);
         }
