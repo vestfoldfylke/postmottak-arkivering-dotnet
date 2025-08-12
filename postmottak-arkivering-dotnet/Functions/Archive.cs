@@ -231,7 +231,7 @@ public class Archive
          * and MS Graph does not return milliseconds in the returned dateTime properties, so we must filter it ourselves.
          */
         var mailMessages = await _graphService.GetMailMessages(userPrincipalName, folderId,
-            filter: $"receivedDateTime gt {HelperTools.GetUtcDateTimeString(lastRegisteredReceivedDateTime)}", orderBy: "receivedDateTime desc", top: 500);
+            filter: $"receivedDateTime gt {HelperTools.GetUtcDateTimeString(lastRegisteredReceivedDateTime)}", top: 999);
 
         var filteredMailMessages = mailMessages
             .Where(message => message.ReceivedDateTime.HasValue &&
