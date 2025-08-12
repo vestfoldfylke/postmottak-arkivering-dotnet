@@ -29,7 +29,8 @@ public interface IGraphService
     Task<List<MailFolder>> GetMailChildFolders(string userPrincipalName, string folderId);
     Task<byte[]> GetMailMessageRaw(string userPrincipalName, string messageId);
     Task<List<Attachment>> GetMailMessageAttachments(string userPrincipalName, string messageId);
-    Task<List<Message>> GetMailMessages(string userPrincipalName, string folderId, string[]? expandedProperties = null);
+    Task<List<Message>> GetMailMessages(string userPrincipalName, string folderId, string[]? expandedProperties = null,
+        string? filter = null, string? orderBy = "receivedDateTime asc", int top = 100);
     Task<Message?> MoveMailMessage(string userPrincipalName, string messageId, string destinationFolderId);
     Task<bool> PatchMailMessage(string userPrincipalName, string messageId, Message message);
     Task<bool> ReplyMailMessage(string userPrincipalName, string messageId,
@@ -172,15 +173,18 @@ public class GraphService : IGraphService
         return attachments.Value;
     }
 
-    public async Task<List<Message>> GetMailMessages(string userPrincipalName, string folderId, string[]? expandedProperties = null)
+    public async Task<List<Message>> GetMailMessages(string userPrincipalName, string folderId,
+        string[]? expandedProperties = null, string? filter = null, string? orderBy = "receivedDateTime asc",
+        int top = 100)
     {
         /*using AzureEventSourceListener listener = AzureEventSourceListener.CreateConsoleLogger();*/
         Action<RequestConfiguration<MessagesRequestBuilder.MessagesRequestBuilderGetQueryParameters>> options = config =>
         {
             config.Headers.Add(ImmutableIdHeader, ImmutableIdHeaderValue);
             config.QueryParameters.Expand = expandedProperties;
-            config.QueryParameters.Orderby = ["receivedDateTime asc"];
-            config.QueryParameters.Top = 100;
+            config.QueryParameters.Filter = filter;
+            config.QueryParameters.Orderby = [orderBy ?? "receivedDateTime asc"];
+            config.QueryParameters.Top = top;
         };
         
         var mailMessages = await _graphClient.Users[userPrincipalName].MailFolders[folderId].Messages.GetAsync(options);
@@ -189,7 +193,7 @@ public class GraphService : IGraphService
             return [];
         }
 
-        _logger.LogInformation("Retrieved {Count} mail messages from {UserPrincipalName} in folder {FolderId}", mailMessages.Value.Count, userPrincipalName, folderId);
+        _logger.LogInformation("Retrieved {Count} mail messages from {UserPrincipalName} in folder {FolderId} with filter {Filter}", mailMessages.Value.Count, userPrincipalName, folderId, filter);
         return mailMessages.Value;
     }
 

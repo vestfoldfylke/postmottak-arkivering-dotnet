@@ -19,4 +19,7 @@ public static class HelperTools
     public static bool IsToPostmottak(Message message, string postmottakUpn) =>
         message.ToRecipients is { Count: 1 } &&
         message.ToRecipients.Any(recipient => recipient.EmailAddress?.Address == postmottakUpn);
+
+    public static string GetUtcDateTimeString(DateTimeOffset dateTimeOffset) =>
+        dateTimeOffset.ToString("yyyy-MM-ddTHH:mm:ssZ");
 }

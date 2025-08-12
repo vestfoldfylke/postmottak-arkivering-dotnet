@@ -15,6 +15,7 @@ using Vestfold.Extensions.Authentication;
 using Vestfold.Extensions.Authentication.Services;
 using Vestfold.Extensions.Logging;
 using Vestfold.Extensions.Metrics;
+using Vestfold.Extensions.MongoDb;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
@@ -26,6 +27,7 @@ builder.Logging.AddVestfoldLogging();
 builder.Services.AddVestfoldAuthentication();
 builder.Services.AddVestfoldArchive();
 builder.Services.AddVestfoldMetrics();
+builder.Services.AddVestfoldMongoDb();
 
 /*Serilog.Debugging.SelfLog.Enable(msg =>
 {
@@ -42,6 +44,7 @@ builder.Services.AddSingleton<IGraphService, GraphService>();
 builder.Services.AddSingleton<IArchiveService, ArchiveService>();
 builder.Services.AddSingleton<IBlobService, BlobService>();
 builder.Services.AddSingleton<IStatisticsService, StatisticsService>();
+builder.Services.AddSingleton<IMongoDbServices, MongoDbServices>();
 
 // AI Agent Services
 builder.Services.AddSingleton<IAiArntIvanService, AiArntIvanService>();
