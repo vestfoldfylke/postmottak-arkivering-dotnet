@@ -260,7 +260,7 @@ public partial class Rf1350EmailType : IEmailType
 
             if (activeCase?["Documents"] is null)
             {
-                throw new InvalidOperationException($"No cases or documents found for the given project number {_result.ProjectNumber}. Wait for it to be created.");
+                throw new InvalidOperationException($"No cases or documents found for the given reference number {_result.ReferenceNumber}. Wait for it to be created.");
             }
             
             flowStatus.Archive.Case = activeCase;
