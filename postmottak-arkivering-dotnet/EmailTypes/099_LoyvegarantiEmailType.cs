@@ -119,8 +119,8 @@ public class LoyvegarantiEmailType : IEmailType
             };
         }
         
-        var (_, result) = await _aiArntIvan.Ask<LoyvegarantiChatResult>($"{message.Subject!} - {message.Body!.Content!}");
-        if (result is null || string.IsNullOrEmpty(result.OrganizationName) || string.IsNullOrEmpty(result.OrganizationNumber))
+        var (_, result) = await _aiArntIvan.Ask<LoyvegarantiChatResult>(message.Subject!);
+        if (result is null || string.IsNullOrEmpty(result.OrganizationName) || string.IsNullOrEmpty(result.OrganizationNumber) || result.OrganizationNumber.Length != 9 || !int.TryParse(result.OrganizationNumber, out _))
         {
             _metricsService.Count($"{Constants.MetricsPrefix}_EmailType_Maybe_Match", "EmailType hit a maybe match", ("EmailType", nameof(LoyvegarantiEmailType)));
             var resultString = JsonSerializer.Serialize(result);
