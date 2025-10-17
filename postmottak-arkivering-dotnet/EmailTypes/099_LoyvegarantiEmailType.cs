@@ -187,6 +187,8 @@ public class LoyvegarantiEmailType : IEmailType
             
             if (activeCase is null)
             {
+                var caseTitle = $"Drosjeløyve - {_result.OrganizationName} - {_result.OrganizationNumber}";
+                
                 activeCase = await _archiveService.CreateCase(new
                 {
                     AccessCode = "U",
@@ -214,14 +216,13 @@ public class LoyvegarantiEmailType : IEmailType
                     ResponsibleEnterpriseRecno = _responsibleEnterpriseRecno,
                     Status = "B",
                     SubArchive = "Løyver",
-                    Title = $"Drosjeløyve - {_result.OrganizationName} - {_result.OrganizationNumber}"
+                    Title = caseTitle
                 });
                 
                 flowStatus.Archive.CaseCreated = true;
                 
                 _metricsService.Count($"{Constants.MetricsPrefix}_CreateCase", "Archive case created");
-                _logger.LogInformation("Created new case with CaseNumber {CaseNumber} and Title {Title}",
-                    activeCase["CaseNumber"], activeCase["Title"]);
+                _logger.LogInformation("Created new case with CaseNumber {CaseNumber} and Title {Title}", activeCase["CaseNumber"], caseTitle);
             }
 
             flowStatus.Archive.CaseNumber = activeCase["CaseNumber"]!.ToString();
