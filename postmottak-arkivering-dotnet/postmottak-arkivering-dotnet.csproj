@@ -15,17 +15,17 @@
     </PropertyGroup>
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
-        <PackageReference Include="Azure.Storage.Blobs" Version="12.25.0" />
+        <PackageReference Include="Azure.Storage.Blobs" Version="12.26.0" />
         <PackageReference Include="JetBrains.Annotations" Version="2025.2.2" />
         <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.23.0" />
         <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="2.0.0" />
-        <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.0.0" />
+        <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.1.0" />
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="2.0.2" />
-        <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.OpenApi" Version="1.5.1" />
+        <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.OpenApi" Version="1.6.0" />
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" Version="4.3.1" />
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.5" />
-        <PackageReference Include="Microsoft.SemanticKernel" Version="1.65.0" />
-        <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.65.0" />
+        <PackageReference Include="Microsoft.SemanticKernel" Version="1.66.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.66.0" />
         <!-- Remove System.Text.RegularExpressions when Microsoft.Azure.Functions.Worker.Extensions.OpenApi has implemeted System.Text.RegularExpressions >= 4.3.1 -->
         <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
         <PackageReference Include="Vestfold.Extensions.Archive" Version="1.1.1" />
