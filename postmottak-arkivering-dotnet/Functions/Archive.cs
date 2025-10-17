@@ -103,7 +103,7 @@ public class Archive
     }
     
     [Function("GetAndHandleEmailsTimer")]
-    public async Task GetAndHandleEmailsTrigger([TimerTrigger("0 */5 * * * *")] TimerInfo myTimer)
+    public async Task GetAndHandleEmailsTrigger([TimerTrigger("%SynchronizeSchedule%")] TimerInfo myTimer)
     {
         if (_hostEnvironment.IsDevelopment())
         {

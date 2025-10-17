@@ -73,6 +73,7 @@ Fyll ut
     "Values": {
         "AzureWebJobsStorage": "UseDevelopmentStorage=true",
         "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+        "SynchronizeSchedule": "0 */5 * * * *",
         "BLOB_STORAGE_CONNECTION_STRING": "connstring",
         "BLOB_STORAGE_CONTAINER_NAME": "dev-local",
         "BLOB_STORAGE_QUEUE_NAME": "queue",
