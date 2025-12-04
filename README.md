@@ -46,13 +46,21 @@ Automatisering av innkommende e-post til fylkeskommunen. Hovedsaklig automatisk 
 #### Flyt
 - Videresend e-posten til faktura-avdelingen
 
-### Løyvegaranti (under utvikling)
+### Løyvegaranti
 
 #### Kriterie for gjenkjenning
-Fyll ut
+- Epost må komme fra matrixinsurance
+- Emne må inneholde "Løyve" og "Org. nr"
+- Eposten må ikke være videresendt
+- KI må finne nødvendige data for arkivering 
 
 #### Flyt
-Fyll ut
+- Sjekker om det finnes en sak
+  - Oppdaterer saken til status "Under behandling" om det trengs
+  - Lager ny sak om den ikke finner
+- Oppretter nytt dokument i saken basert på eposten, og legger til evt vedlegg
+- Tittel velges basert på typen epost (Løyvegaranti, Endring av Løyvegaranti, eller Opphør av Løyvegaranti)
+- 👍
 
 ## Teknisk skisse
 ![image](https://github.com/user-attachments/assets/94dd7042-7cec-49bc-8da0-aa37f441bfa5)
