@@ -178,16 +178,8 @@ public class GraphService : IGraphService
         int top = 100)
     {
         /*using AzureEventSourceListener listener = AzureEventSourceListener.CreateConsoleLogger();*/
-        Action<RequestConfiguration<MessagesRequestBuilder.MessagesRequestBuilderGetQueryParameters>> options = config =>
-        {
-            config.Headers.Add(ImmutableIdHeader, ImmutableIdHeaderValue);
-            config.QueryParameters.Expand = expandedProperties;
-            config.QueryParameters.Filter = filter;
-            config.QueryParameters.Orderby = [orderBy ?? "receivedDateTime asc"];
-            config.QueryParameters.Top = top;
-        };
-        
-        var mailMessages = await _graphClient.Users[userPrincipalName].MailFolders[folderId].Messages.GetAsync(options);
+
+        var mailMessages = await _graphClient.Users[userPrincipalName].MailFolders[folderId].Messages.GetAsync(Options);
         if (mailMessages?.Value is null)
         {
             return [];
@@ -195,6 +187,15 @@ public class GraphService : IGraphService
 
         _logger.LogInformation("Retrieved {Count} mail messages from {UserPrincipalName} in folder {FolderId} with filter {Filter}", mailMessages.Value.Count, userPrincipalName, folderId, filter);
         return mailMessages.Value;
+
+        void Options(RequestConfiguration<MessagesRequestBuilder.MessagesRequestBuilderGetQueryParameters> config)
+        {
+            config.Headers.Add(ImmutableIdHeader, ImmutableIdHeaderValue);
+            config.QueryParameters.Expand = expandedProperties;
+            config.QueryParameters.Filter = filter;
+            config.QueryParameters.Orderby = [orderBy ?? "receivedDateTime asc"];
+            config.QueryParameters.Top = top;
+        }
     }
 
     public async Task<Message?> MoveMailMessage(string userPrincipalName, string messageId, string destinationFolderId)

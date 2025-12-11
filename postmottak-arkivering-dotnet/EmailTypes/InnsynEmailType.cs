@@ -43,12 +43,14 @@ public class InnsynEmailType : IEmailType
         _graphService = serviceProvider.GetService<IGraphService>()!;
         _metricsService = serviceProvider.GetService<IMetricsService>()!;
         
-        var configuration = serviceProvider.GetService<IConfiguration>()!;
-        if (Enabled)
+        if (!Enabled)
         {
-            _postmottakUpn = configuration["POSTMOTTAK_UPN"] ?? throw new NullReferenceException();
-            _toRecipients = configuration["EMAILTYPE_INNSYN_ADDRESSES"]?.Split(',').ToList() ?? throw new NullReferenceException();
+            return;
         }
+        
+        var configuration = serviceProvider.GetService<IConfiguration>()!;
+        _postmottakUpn = configuration["POSTMOTTAK_UPN"] ?? throw new NullReferenceException();
+        _toRecipients = configuration["EMAILTYPE_INNSYN_ADDRESSES"]?.Split(',').ToList() ?? throw new NullReferenceException();
     }
     
     public async Task<EmailTypeMatchResult> MatchCriteria(Message message)

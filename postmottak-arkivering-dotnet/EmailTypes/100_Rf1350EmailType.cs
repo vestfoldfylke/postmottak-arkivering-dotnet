@@ -63,13 +63,15 @@ public partial class Rf1350EmailType : IEmailType
         _graphService = serviceProvider.GetService<IGraphService>()!;
         _metricsService = serviceProvider.GetService<IMetricsService>()!;
         
-        IConfiguration configuration = serviceProvider.GetRequiredService<IConfiguration>();
-        if (Enabled)
+        if (!Enabled)
         {
-            _epostInnDocumentCategory = configuration["ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN"] ?? throw new NullReferenceException();
-            _postmottakUpn = configuration["POSTMOTTAK_UPN"] ?? throw new NullReferenceException();
-            _testProjectNumber = configuration["EMAILTYPE_RF1350_TEST_PROJECTNUMBER"];
+            return;
         }
+
+        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+        _epostInnDocumentCategory = configuration["ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN"] ?? throw new NullReferenceException();
+        _postmottakUpn = configuration["POSTMOTTAK_UPN"] ?? throw new NullReferenceException();
+        _testProjectNumber = configuration["EMAILTYPE_RF1350_TEST_PROJECTNUMBER"];
     }
     
     public async Task<EmailTypeMatchResult> MatchCriteria(Message message)
@@ -194,8 +196,7 @@ public partial class Rf1350EmailType : IEmailType
         {
             try
             {
-                flowStatus.Archive.SyncEnterprise =
-                    (await _archiveService.SyncEnterprise(_result.OrganizationNumber.ToString()))["enterprise"];
+                flowStatus.Archive.SyncEnterprise = (await _archiveService.SyncEnterprise(_result.OrganizationNumber.ToString()))["enterprise"];
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("404"))
             {
@@ -226,13 +227,8 @@ public partial class Rf1350EmailType : IEmailType
                 Title = $"RF13.50%{_result!.ReferenceNumber}%"
             });
 
-            var activeCase = cases.FirstOrDefault(c => c is not null && _caseStatuses.Contains(c["Status"]!.ToString()));
+            var activeCase = cases.FirstOrDefault(c => c is not null && _caseStatuses.Contains(c["Status"]!.ToString())) ?? await CreateCase(flowStatus, activeProject);
 
-            if (activeCase is null)
-            {
-                activeCase = await CreateCase(flowStatus, activeProject);
-            }
-            
             flowStatus.Archive.CaseNumber = activeCase["CaseNumber"]!.ToString();
         }
         
@@ -391,8 +387,7 @@ public partial class Rf1350EmailType : IEmailType
         {
             try
             {
-                flowStatus.Archive.SyncEnterprise =
-                    (await _archiveService.SyncEnterprise(_result.OrganizationNumber.ToString()))["enterprise"];
+                flowStatus.Archive.SyncEnterprise = (await _archiveService.SyncEnterprise(_result.OrganizationNumber.ToString()))["enterprise"];
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("404"))
             {
@@ -423,13 +418,8 @@ public partial class Rf1350EmailType : IEmailType
                 Title = $"RF13.50%{_result!.ReferenceNumber}%"
             });
 
-            var activeCase = cases.FirstOrDefault(c => c is not null && _caseStatuses.Contains(c["Status"]!.ToString()));
+            var activeCase = cases.FirstOrDefault(c => c is not null && _caseStatuses.Contains(c["Status"]!.ToString())) ?? await CreateCase(flowStatus, activeProject);
 
-            if (activeCase is null)
-            {
-                activeCase = await CreateCase(flowStatus, activeProject);
-            }
-            
             flowStatus.Archive.CaseNumber = activeCase["CaseNumber"]!.ToString();
         }
         
