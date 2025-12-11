@@ -68,15 +68,15 @@ public class LoyvegarantiEmailType : IEmailType
         _logger = serviceProvider.GetRequiredService<ILogger<LoyvegarantiEmailType>>();
         _metricsService = serviceProvider.GetRequiredService<IMetricsService>();
         
-        IConfiguration configuration = serviceProvider.GetRequiredService<IConfiguration>();
-        
-        if (Enabled)
+        if (!Enabled)
         {
-            _epostInnDocumentCategory = configuration["ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN"] ?? throw new NullReferenceException();
-            _postmottakUpn = configuration["POSTMOTTAK_UPN"] ?? throw new NullReferenceException();
-            _responsibleEnterpriseRecno = configuration["EMAILTYPE_LOYVEGARANTI_RESPONSIBLE_ENTERPRISE_RECNO"] ??
-                                          throw new NullReferenceException();
+            return;
         }
+        
+        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+        _epostInnDocumentCategory = configuration["ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN"] ?? throw new NullReferenceException();
+        _postmottakUpn = configuration["POSTMOTTAK_UPN"] ?? throw new NullReferenceException();
+        _responsibleEnterpriseRecno = configuration["EMAILTYPE_LOYVEGARANTI_RESPONSIBLE_ENTERPRISE_RECNO"] ?? throw new NullReferenceException();
     }
     
     public async Task<EmailTypeMatchResult> MatchCriteria(Message message)

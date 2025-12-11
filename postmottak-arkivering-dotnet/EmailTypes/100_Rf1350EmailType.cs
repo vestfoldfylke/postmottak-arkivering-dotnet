@@ -63,13 +63,15 @@ public partial class Rf1350EmailType : IEmailType
         _graphService = serviceProvider.GetService<IGraphService>()!;
         _metricsService = serviceProvider.GetService<IMetricsService>()!;
         
-        IConfiguration configuration = serviceProvider.GetRequiredService<IConfiguration>();
-        if (Enabled)
+        if (!Enabled)
         {
-            _epostInnDocumentCategory = configuration["ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN"] ?? throw new NullReferenceException();
-            _postmottakUpn = configuration["POSTMOTTAK_UPN"] ?? throw new NullReferenceException();
-            _testProjectNumber = configuration["EMAILTYPE_RF1350_TEST_PROJECTNUMBER"];
+            return;
         }
+
+        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+        _epostInnDocumentCategory = configuration["ARCHIVE_DOCUMENT_CATEGORY_EPOST_INN"] ?? throw new NullReferenceException();
+        _postmottakUpn = configuration["POSTMOTTAK_UPN"] ?? throw new NullReferenceException();
+        _testProjectNumber = configuration["EMAILTYPE_RF1350_TEST_PROJECTNUMBER"];
     }
     
     public async Task<EmailTypeMatchResult> MatchCriteria(Message message)
