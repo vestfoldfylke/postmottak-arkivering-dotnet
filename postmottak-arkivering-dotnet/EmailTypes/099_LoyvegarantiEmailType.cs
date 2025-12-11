@@ -168,21 +168,23 @@ public class LoyvegarantiEmailType : IEmailType
 
             if (activeCase is not null && activeCase["Status"]?.ToString() == "Avsluttet")
             {
-                var updatedCase = await _archiveService.UpdateCase(new
+                try
                 {
-                    CaseNumber = activeCase["CaseNumber"]!.ToString(),
-                    Status = "B"
-                });
-                
-                if (updatedCase is null)
+                    await _archiveService.UpdateCase(new
+                    {
+                        CaseNumber = activeCase["CaseNumber"]!.ToString(),
+                        Status = "B"
+                    });
+                    
+                    _metricsService.Count($"{Constants.MetricsPrefix}_UpdateCase", "Update case called", ("Result", "Success"));
+                    _logger.LogInformation("Updated case status to 'Under behandling' (B) for CaseNumber {CaseNumber}", activeCase["CaseNumber"]);
+                }
+                catch (InvalidOperationException ex)
                 {
                     _metricsService.Count($"{Constants.MetricsPrefix}_UpdateCase", "Update case called", ("Result", "Failed"));
-                    _logger.LogError("Failed to update case status to 'Under behandling' (B) for CaseNumber {CaseNumber}", activeCase["CaseNumber"]);
-                    throw new InvalidOperationException("Failed to update case status to 'B'");
+                    _logger.LogError(ex, "Failed to update case status to 'Under behandling' (B) for CaseNumber {CaseNumber}", activeCase["CaseNumber"]);
+                    throw;
                 }
-                
-                _metricsService.Count($"{Constants.MetricsPrefix}_UpdateCase", "Update case called", ("Result", "Success"));
-                _logger.LogInformation("Updated case status to 'Under behandling' (B) for CaseNumber {CaseNumber}", activeCase["CaseNumber"]);
             }
             
             if (activeCase is null)
