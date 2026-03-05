@@ -52,9 +52,14 @@ public class BlobService : IBlobService
     public async Task<List<BlobItem>> ListBlobs(string blobPath, CancellationToken? stoppingToken = null)
     {
         var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
+        var blobsOptions = new GetBlobsOptions
+        {
+            Prefix = blobPath
+        };
+        
         List<BlobItem> blobItems = [];
         
-        var blobs = containerClient.GetBlobsAsync(prefix: blobPath, cancellationToken: stoppingToken ?? CancellationToken.None);
+        var blobs = containerClient.GetBlobsAsync(blobsOptions, cancellationToken: stoppingToken ?? CancellationToken.None);
         await foreach (var blob in blobs)
         {
             blobItems.Add(blob);

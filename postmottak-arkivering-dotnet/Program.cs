@@ -1,6 +1,5 @@
 /*using System;
 using System.Diagnostics;*/
-using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -51,9 +50,5 @@ builder.Services.AddSingleton<IAiArntIvanService, AiArntIvanService>();
 builder.Services.AddSingleton<IAiPluginTestService, AiPluginTestService>();
 
 AiHelper.ConfigurationManager = builder.Configuration;
-
-builder.Services
-     .AddApplicationInsightsTelemetryWorkerService()
-     .ConfigureFunctionsApplicationInsights();
 
 builder.Build().Run();
