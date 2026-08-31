@@ -236,6 +236,9 @@ public class EmailTypeTests
     [InlineData("RF13.50 - Automatisk epost til arkiv", "00-1234", "0000-0000")]
     [InlineData("RF13.50 - Automatisk epost til arkiv", "00-12345", "0000-0000")]
     [InlineData("RF13.50 - Automatisk epost til arkiv", "00-123456", "0000-0000")]
+    [InlineData("[EKSTERN] RF13.50 - Automatisk kvittering på innsendt søknad", "00-1234", "0000-0000")]
+    [InlineData("[EKSTERN] RF13.50 - Automatisk epost til arkiv", "00-1234", "0000-0000")]
+    [InlineData("[ekstern] RF13.50 - Automatisk kvittering på innsendt søknad", "00-1234", "0000-0000")]
     public async Task GetEmailType_Should_Return_Rf1350EmailType(string subject, string projectNumber, string referenceNumber)
     {
         if (!new Rf1350EmailType(_serviceProvider).Enabled)
