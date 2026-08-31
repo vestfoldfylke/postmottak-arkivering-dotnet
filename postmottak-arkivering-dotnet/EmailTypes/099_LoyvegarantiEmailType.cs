@@ -14,6 +14,7 @@ using postmottak_arkivering_dotnet.Contracts.Ai.Enums;
 using postmottak_arkivering_dotnet.Contracts.Email;
 using postmottak_arkivering_dotnet.Services;
 using postmottak_arkivering_dotnet.Services.Ai;
+using postmottak_arkivering_dotnet.Utils;
 using Vestfold.Extensions.Archive.Services;
 using Vestfold.Extensions.Metrics.Services;
 
@@ -110,7 +111,8 @@ public class LoyvegarantiEmailType : IEmailType
             };
         }
         
-        if (_blackListedSubjects.Any(subject => message.Subject!.StartsWith(subject, StringComparison.OrdinalIgnoreCase)))
+        var normalizedSubject = HelperTools.NormalizeSubject(message.Subject);
+        if (_blackListedSubjects.Any(subject => normalizedSubject.StartsWith(subject, StringComparison.OrdinalIgnoreCase)))
         {
             return new EmailTypeMatchResult
             {
