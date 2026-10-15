@@ -11,7 +11,7 @@ public class LoyvegarantiChatResult
     [Description("Er alltid i store bokstaver. Og står før 'Org.nr'")]
     public required string OrganizationName { get; init; }
     
-    [Description("Er 9 siffer langt og kan inneholde mellomrom")]
+    [Description("Organisasjonsnummer: nøyaktig 9 sifre uten mellomrom, f.eks. \"123456789\". Fjern eventuelle mellomrom fra teksten (\"123 456 789\" blir \"123456789\").")]
     public required string OrganizationNumber { get; init; }
     
     public required LøyveGarantiType Type { get; init; }
